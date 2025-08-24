@@ -77,7 +77,7 @@
                     <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
                         <button data-round="1" class="navigate-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">EMEA Feud</button>
                         <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
-                        <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Rapid Fire</button>
+                        <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
                     </div>
                 </div>
             </div>
@@ -182,7 +182,7 @@
             function renderGame() {
                 switch (gameState.currentRound) {
                     case 1: renderFamilyFeud(); break;
-                    case 2: renderRapidFire(); break;
+                    case 2: renderFastestFingerFirst(); break;
                     case 3: renderKPIIdentifier(); break;
                 }
             }
@@ -232,19 +232,51 @@
                     });
                 });
             }
+            
+            async function refreshFastestFinger() {
+                const refreshBtn = document.getElementById('refresh-fff-btn');
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
-            function renderRapidFire() {
-                const roundData = gameState.gameData.rapidFire;
-                let questionsHTML = roundData.map(item => `
+                try {
+                    const gameData = await generateGameContent(2);
+                    gameState.gameData = gameData;
+                    renderFastestFingerFirst();
+                } catch (error) {
+                     showMessage("Failed to refresh scenarios.", true);
+                     refreshBtn.disabled = false;
+                     refreshBtn.textContent = 'Refresh';
+                }
+            }
+
+            function renderFastestFingerFirst() {
+                const roundData = gameState.gameData.fastestFinger;
+                let questionsHTML = roundData.map((item, index) => `
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <p class="font-bold text-lg">${item.question}</p>
-                        <p class="text-green-400 blur-sm hover:blur-none transition-all cursor-pointer">${item.answer}</p>
+                        <p class="text-lg">${item.scenario}</p>
+                        <p class="font-bold text-xl mt-2">${item.question}</p>
+                        <div class="flex items-center gap-4 mt-2">
+                            <p id="fff-answer-${index}" class="text-green-400 text-lg font-bold mt-2 blur-sm transition-all flex-grow text-left">${item.answer}</p>
+                            <button data-target="fff-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                        </div>
                     </div>
                 `).join('');
 
                 gameContent.innerHTML = `
-                    <h2 class="text-3xl font-bold text-center mb-6">Rapid Fire Questions</h2>
+                    <div class="flex justify-center items-center gap-4 mb-6">
+                        <h2 class="text-3xl font-bold">Fastest Finger First</h2>
+                        <button id="refresh-fff-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh</button>
+                    </div>
                     <div class="space-y-4">${questionsHTML}</div>`;
+
+                document.getElementById('refresh-fff-btn').addEventListener('click', refreshFastestFinger);
+                document.querySelectorAll('.show-answer-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const targetId = e.currentTarget.dataset.target;
+                        document.getElementById(targetId).classList.remove('blur-sm');
+                        e.currentTarget.style.display = 'none';
+                    });
+                });
             }
 
             async function refreshKPIs() {
@@ -301,7 +333,7 @@
                 if (round === 1) {
                     prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
                 } else if (round === 2) {
-                    prompt = `Generate 5 'Rapid Fire' questions and answers for Customer Success and Project Managers. The tone should be professional but fun. Return ONLY a valid JSON object like this: {"rapidFire": [{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]}`;
+                    prompt = `Generate 3 'Fastest Finger First' scenarios for Customer Success Managers or Project Managers. Each scenario should provide numbers to calculate a common business metric. For each, provide the scenario, a question asking for the calculation, and a detailed answer that explains the formula and shows the calculation. Example: Scenario: "A company starts with 100 customers and loses 10 by the end of the month." Question: "What is the monthly churn rate?" Answer: "Churn Rate = (Customers Lost / Starting Customers) * 100. Calculation: (10 / 100) * 100 = 10%." Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
                     prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
