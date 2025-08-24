@@ -385,10 +385,9 @@
                 const roundData = gameState.gameData.familyFeud;
                 let questionsHTML = roundData.questions.map((item, index) => `
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <p class="font-bold text-lg">${item.q}</p>
-                        <div class="flex items-center gap-4 mt-2">
-                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left">${item.a}</p>
-                            <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                        <div class="flex items-center gap-4">
+                            <p id="feud-question-${index}" class="font-bold text-lg flex-grow text-left blur-sm transition-all">${item.q}</p>
+                            <button data-target="feud-question-${index}" class="show-question-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show</button>
                         </div>
                     </div>
                 `).join('');
@@ -402,7 +401,7 @@
                     <div class="space-y-4">${questionsHTML}</div>`;
                 
                 document.getElementById('refresh-feud-btn').addEventListener('click', (e) => refreshContent(1, e.currentTarget));
-                document.querySelectorAll('.show-answer-btn').forEach(btn => {
+                document.querySelectorAll('.show-question-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const targetId = e.currentTarget.dataset.target;
                         document.getElementById(targetId).classList.remove('blur-sm');
