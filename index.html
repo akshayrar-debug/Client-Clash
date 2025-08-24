@@ -48,9 +48,9 @@
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.7); /* blue-500 */
         }
-        #timer {
+        #timer-display {
             font-weight: 900;
-            font-size: 3rem;
+            font-size: 2.5rem; /* Adjusted size */
         }
         .modal {
             background-color: rgba(0,0,0,0.7);
@@ -68,11 +68,21 @@
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body class="flex items-center justify-center min-h-screen p-4 relative">
+
+    <!-- Independent Timer -->
+    <div id="timer-container" class="absolute top-4 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4">
+        <div id="timer-display" class="text-5xl text-red-500">60</div>
+        <div class="flex flex-col space-y-2">
+            <button id="timer-start-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Start</button>
+            <button id="timer-stop-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-1 px-3 rounded-md text-sm">Stop</button>
+            <button id="timer-reset-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md text-sm">Reset</button>
+        </div>
+    </div>
 
     <div id="app" class="w-full max-w-7xl mx-auto">
         <!-- Header -->
-        <header class="text-center mb-6">
+        <header class="text-center mb-6 pt-16">
             <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Client Clash</h1>
             <p class="text-gray-400 mt-2">The Ultimate Game for CS and PM Professionals</p>
         </header>
@@ -83,7 +93,7 @@
             <div id="game-board" class="lg:col-span-3 game-board p-6 rounded-2xl shadow-2xl">
                 <!-- Initial State -->
                 <div id="initial-screen" class="text-center flex flex-col items-center justify-center h-full">
-                    <h2 class="text-3xl font-bold mb-4">Welcome to Client Clash!</h2>
+                    <h2 class="text-3xl font-bold mb-4">Choose a Round to Begin</h2>
                     <div id="message-area" class="my-4 h-6 font-semibold"></div>
                     <div id="loading-state" class="hidden my-4">
                         <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -92,10 +102,10 @@
                         </svg>
                         <p class="mt-2 text-lg text-gray-300">Generating your custom game... Please wait.</p>
                     </div>
-                    <div id="start-options">
-                        <button id="start-game-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">
-                            Start New Game
-                        </button>
+                    <div id="start-options" class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <button data-round="1" class="start-round-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Family Feud</button>
+                        <button data-round="2" class="start-round-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Rapid Fire</button>
+                        <button data-round="3" class="start-round-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
                     </div>
                 </div>
 
@@ -116,19 +126,12 @@
                     </div>
                 </div>
 
-                <!-- Timer -->
-                <div class="game-board p-6 rounded-2xl shadow-2xl text-center">
-                    <h2 class="text-2xl font-bold mb-2">Timer</h2>
-                    <div id="timer" class="text-6xl text-red-500">60</div>
-                </div>
-
                 <!-- Game Controls -->
                 <div id="game-controls" class="game-board p-6 rounded-2xl shadow-2xl hidden">
                     <h2 class="text-2xl font-bold mb-4">Controls</h2>
                     <div class="space-y-3">
                          <button id="instructions-btn" class="btn w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Instructions</button>
-                         <button id="next-round-btn" class="btn w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Next Round</button>
-                         <button id="reset-game-btn" class="btn w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg mt-4">Reset Game</button>
+                         <button id="reset-game-btn" class="btn w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg mt-4">Back to Menu</button>
                     </div>
                 </div>
             </aside>
@@ -157,18 +160,14 @@
     <script type="module">
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM ELEMENTS ---
-            const app = document.getElementById('app');
             const initialScreen = document.getElementById('initial-screen');
             const gameContent = document.getElementById('game-content');
-            const startGameBtn = document.getElementById('start-game-btn');
             const loadingState = document.getElementById('loading-state');
             const startOptions = document.getElementById('start-options');
             const messageArea = document.getElementById('message-area');
             const scoreboardContainer = document.getElementById('scoreboard');
             const addTeamBtn = document.getElementById('add-team-btn');
-            const timerDisplay = document.getElementById('timer');
             const gameControls = document.getElementById('game-controls');
-            const nextRoundBtn = document.getElementById('next-round-btn');
             const resetGameBtn = document.getElementById('reset-game-btn');
             const instructionsBtn = document.getElementById('instructions-btn');
             const instructionsModal = document.getElementById('instructions-modal');
@@ -177,14 +176,20 @@
             const winnerModal = document.getElementById('winner-modal');
             const winnerText = document.getElementById('winner-text');
             const playAgainBtn = document.getElementById('play-again-btn');
+            
+            // Timer elements
+            const timerDisplay = document.getElementById('timer-display');
+            const timerStartBtn = document.getElementById('timer-start-btn');
+            const timerStopBtn = document.getElementById('timer-stop-btn');
+            const timerResetBtn = document.getElementById('timer-reset-btn');
 
             // --- GAME STATE ---
             let gameState = {};
             let timerInterval;
+            let timeLeft = 60;
 
             // --- SOUNDS ---
             let sounds = {};
-            // Initialize sounds after a user interaction (e.g., clicking 'Start Game')
             function initializeSounds() {
                 sounds = {
                     correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
@@ -202,38 +207,50 @@
             };
 
             // --- EVENT LISTENERS ---
-            startGameBtn.addEventListener('click', createNewGame);
+            document.querySelectorAll('.start-round-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const round = parseInt(e.currentTarget.dataset.round);
+                    startNewRound(round);
+                });
+            });
             addTeamBtn.addEventListener('click', addTeam);
             resetGameBtn.addEventListener('click', resetGame);
-            nextRoundBtn.addEventListener('click', advanceRound);
             instructionsBtn.addEventListener('click', showInstructions);
             closeModalBtn.addEventListener('click', () => instructionsModal.classList.add('hidden'));
             playAgainBtn.addEventListener('click', () => {
                 winnerModal.classList.add('hidden');
                 resetGame();
             });
+            
+            // Timer Listeners
+            timerStartBtn.addEventListener('click', startTimer);
+            timerStopBtn.addEventListener('click', stopTimer);
+            timerResetBtn.addEventListener('click', resetTimer);
 
             // --- GAME FLOW FUNCTIONS ---
-            async function createNewGame() {
+            async function startNewRound(round) {
                 loadingState.classList.remove('hidden');
                 startOptions.classList.add('hidden');
-                await Tone.start();
-                initializeSounds();
+                if (Object.keys(sounds).length === 0) {
+                    await Tone.start();
+                    initializeSounds();
+                }
 
                 try {
-                    const gameData = await generateGameContent();
-                    if (!gameData) throw new Error("AI failed to generate game data.");
-                    
-                    gameState = {
-                        gameData,
-                        currentRound: 1,
-                        activeTeamIndex: 0,
-                        teams: [
+                    // Only generate game data if it doesn't exist yet
+                    if (!gameState.gameData) {
+                        const gameData = await generateGameContent();
+                        if (!gameData) throw new Error("AI failed to generate game data.");
+                        gameState.gameData = gameData;
+                        gameState.teams = [
                             { name: 'Team 1', score: 0 },
                             { name: 'Team 2', score: 0 }
-                        ],
-                        roundState: {},
-                    };
+                        ];
+                    }
+                    
+                    gameState.currentRound = round;
+                    gameState.activeTeamIndex = 0;
+                    gameState.roundState = {};
                     
                     renderGame();
 
@@ -251,23 +268,12 @@
                 gameControls.classList.add('hidden');
                 loadingState.classList.add('hidden');
                 startOptions.classList.remove('hidden');
-                scoreboardContainer.innerHTML = '';
                 addTeamBtn.disabled = true;
             }
 
-            function advanceRound() {
-                if (gameState.currentRound < 3) {
-                    gameState.currentRound++;
-                    gameState.roundState = {};
-                    gameState.activeTeamIndex = 0;
-                    renderGame();
-                } else {
-                    endGame();
-                }
-            }
-
             function resetGame() {
-                gameState = {};
+                // Keep game data and teams, just go back to menu
+                gameState.currentRound = 0;
                 showInitialScreen();
             }
             
@@ -291,20 +297,16 @@
                 addTeamBtn.disabled = false;
 
                 renderTeams();
-                stopTimer();
 
                 switch (gameState.currentRound) {
                     case 1:
                         renderFamilyFeud();
-                        nextRoundBtn.textContent = 'Start Rapid Fire Round';
                         break;
                     case 2:
                         renderRapidFire();
-                        nextRoundBtn.textContent = 'Start KPI Identifier Round';
                         break;
                     case 3:
                         renderKPIIdentifier();
-                        nextRoundBtn.textContent = 'Finish Game';
                         break;
                 }
             }
@@ -334,14 +336,12 @@
                             if (input.value.trim()) {
                                 renameTeam(index, input.value.trim());
                             } else {
-                                renderGame(); // Re-render to restore original name if input is empty
+                                renderGame();
                             }
                         };
                         
                         input.addEventListener('blur', saveName);
-                        input.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') input.blur();
-                        });
+                        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
                     });
 
                     const teamScoreSpan = document.createElement('span');
@@ -360,16 +360,10 @@
 
                 let answerHTML = roundData.answers.map((ans, index) => {
                     const isRevealed = gameState.roundState.revealed.includes(index);
-                    return `
-                        <div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}">
-                            <div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div>
-                            <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div>
-                        </div>`;
+                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}"><div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div><div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div></div>`;
                 }).join('');
                 
-                let awardButtonsHTML = gameState.teams.map((team, index) => 
-                    `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`
-                ).join('');
+                let awardButtonsHTML = gameState.teams.map((team, index) => `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`).join('');
 
                 gameContent.innerHTML = `
                     <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
@@ -381,10 +375,9 @@
                             <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
                             <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
                         </div>
-                         <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Active Team</button></div>
+                         <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Team</button></div>
                     </div>`;
                 
-                // Event Listeners for Family Feud
                 document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
                     const index = parseInt(e.currentTarget.dataset.index);
                     if (!gameState.roundState.revealed.includes(index)) {
@@ -424,8 +417,7 @@
                 const currentQuestion = questions[gameState.roundState.questionIndex];
 
                 if (!currentQuestion) {
-                    gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or proceed to the next round.</p>`;
-                    stopTimer();
+                    gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or end the round.</p>`;
                     return;
                 }
 
@@ -434,18 +426,12 @@
                         <p class="text-xl text-gray-400 mb-2">${activeTeam.name}'s Turn</p>
                         <h2 class="text-4xl font-bold mb-8">${currentQuestion.question}</h2>
                         <div class="mt-8 flex space-x-4">
-                            <button id="start-timer-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Start Timer</button>
                             <button id="correct-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Correct</button>
                             <button id="pass-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg text-lg">Pass / Incorrect</button>
                             <button id="switch-team-rf-btn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Switch Team</button>
                         </div>
                     </div>`;
                 
-                document.getElementById('start-timer-btn').addEventListener('click', () => startTimer(60, () => {
-                    sounds.roundEnd.triggerAttackRelease("C2", "2n");
-                    gameState.roundState.questionIndex = 0;
-                    switchActiveTeam();
-                }));
                 document.getElementById('correct-btn').addEventListener('click', () => {
                     sounds.correct.triggerAttackRelease("C5", "8n");
                     awardPoints(gameState.activeTeamIndex, 10);
@@ -456,7 +442,6 @@
                     nextRapidFireQuestion();
                 });
                 document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
-                    stopTimer();
                     gameState.roundState.questionIndex = 0;
                     switchActiveTeam();
                 });
@@ -503,12 +488,10 @@
                     const selectedIndexes = gameState.roundState.selected;
                     const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
                     
-                    selectedIndexes.forEach(selectedIndex => {
-                        scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10;
-                    });
+                    selectedIndexes.forEach(selectedIndex => { scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10; });
                     
                     awardPoints(gameState.activeTeamIndex, scoreChange);
-                    gameState.roundState.selected = []; // Reset for next team
+                    gameState.roundState.selected = [];
                     switchActiveTeam();
                 });
             }
@@ -520,26 +503,19 @@
                     renderGame();
                 }
             }
-
-            function renameTeam(index, newName) {
-                gameState.teams[index].name = newName;
-                renderGame();
-            }
-            
-            function awardPoints(teamIndex, points) {
-                gameState.teams[teamIndex].score += points;
-                renderGame();
-            }
-            
-            function switchActiveTeam() {
-                gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
-                renderGame();
+            function renameTeam(index, newName) { gameState.teams[index].name = newName; renderGame(); }
+            function awardPoints(teamIndex, points) { gameState.teams[teamIndex].score += points; renderGame(); }
+            function switchActiveTeam() { gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length; renderGame(); }
+            function showInstructions() { instructionsContent.innerHTML = INSTRUCTIONS[gameState.currentRound]; instructionsModal.classList.remove('hidden'); }
+            function showMessage(message, isError = false) {
+                messageArea.textContent = message;
+                messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
+                setTimeout(() => { messageArea.textContent = ''; }, 4000);
             }
 
-            function startTimer(duration, onEnd) {
-                stopTimer();
-                let timeLeft = duration;
-                timerDisplay.textContent = timeLeft;
+            // --- TIMER FUNCTIONS ---
+            function startTimer() {
+                clearInterval(timerInterval); // Ensure no multiple intervals
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     timerDisplay.textContent = timeLeft;
@@ -551,27 +527,12 @@
                     }
                     if (timeLeft <= 0) {
                         stopTimer();
-                        if (onEnd) onEnd();
+                        sounds.roundEnd.triggerAttackRelease("C2", "2n");
                     }
                 }, 1000);
             }
-
-            function stopTimer() {
-                clearInterval(timerInterval);
-                timerDisplay.textContent = '60';
-                timerDisplay.classList.remove('animate-ping');
-            }
-
-            function showInstructions() {
-                instructionsContent.innerHTML = INSTRUCTIONS[gameState.currentRound];
-                instructionsModal.classList.remove('hidden');
-            }
-
-            function showMessage(message, isError = false) {
-                messageArea.textContent = message;
-                messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
-                setTimeout(() => { messageArea.textContent = ''; }, 4000);
-            }
+            function stopTimer() { clearInterval(timerInterval); timerDisplay.classList.remove('animate-ping'); }
+            function resetTimer() { stopTimer(); timeLeft = 60; timerDisplay.textContent = timeLeft; }
 
             // --- AI CONTENT GENERATION ---
             async function generateGameContent() {
@@ -589,13 +550,10 @@
                 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
-                
-                // IMPORTANT: Replace "YOUR_API_KEY_HERE" with your actual Google AI API key
-                const apiKey = "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4"; 
-                
+                const apiKey = "YOUR_API_KEY_HERE"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
-                if (apiKey === "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4") {
+                if (apiKey === "YOUR_API_KEY_HERE") {
                     showMessage("API Key not set. Using fallback questions.", true);
                     return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
                 }
@@ -609,11 +567,10 @@
                 } catch (error) {
                     console.error("AI content generation failed:", error);
                     showMessage("Could not connect to AI. Using fallback questions.", true);
-                    // Fallback data
                     return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
                 }
             }
         });
     </script>
 </body>
-</html>
+</ht
