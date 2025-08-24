@@ -27,40 +27,17 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .answer-card, .kpi-card {
-            transition: all 0.3s ease;
-            transform-style: preserve-3d;
-        }
-        .answer-card.flipped, .kpi-card.flipped {
-            transform: rotateY(180deg);
-        }
-        .card-face {
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-        }
-        .card-back {
-            transform: rotateY(180deg);
-        }
-        .scoreboard-team {
-            transition: all 0.3s ease;
-        }
-        .scoreboard-team.active {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.7); /* blue-500 */
-        }
-        .team-name-input {
-            background-color: #374151;
-            border: 1px solid #4b5563;
-            color: white;
-            padding: 2px 4px;
-            border-radius: 4px;
-            width: 120px;
-        }
         .page {
             display: none;
         }
         .page.active {
             display: block;
+        }
+        .kpi-list-item {
+            background-color: #374151;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -97,24 +74,12 @@
 
             <!-- Game Page -->
             <div id="game-page" class="page">
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div id="game-board" class="lg:col-span-3 game-board p-6 rounded-2xl shadow-2xl">
-                        <!-- Game Content (Dynamically populated) -->
-                        <div id="game-content"></div>
+                 <div id="game-content-wrapper" class="game-board p-6 rounded-2xl shadow-2xl">
+                    <!-- Game Content (Dynamically populated) -->
+                    <div id="game-content"></div>
+                     <div class="text-center mt-6">
+                        <button id="back-to-menu-btn" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg">Back to Menu</button>
                     </div>
-                    <aside id="controls-and-scores" class="space-y-6">
-                        <div class="game-board p-6 rounded-2xl shadow-2xl">
-                            <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
-                                <h2 class="text-2xl font-bold">Scoreboard</h2>
-                                <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">+</button>
-                            </div>
-                            <div id="scoreboard" class="space-y-4"></div>
-                        </div>
-                        <div class="game-board p-6 rounded-2xl shadow-2xl">
-                            <h2 class="text-2xl font-bold mb-4">Controls</h2>
-                            <button id="back-to-menu-btn" class="btn w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg">Back to Menu</button>
-                        </div>
-                    </aside>
                 </div>
             </div>
         </main>
@@ -130,17 +95,12 @@
             const gameContent = document.getElementById('game-content');
             const loadingState = document.getElementById('loading-state');
             const messageArea = document.getElementById('message-area');
-            const scoreboardContainer = document.getElementById('scoreboard');
-            const addTeamBtn = document.getElementById('add-team-btn');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
 
             // --- GAME STATE ---
             let gameState = {
                 gameData: null,
-                teams: [],
                 currentRound: 0,
-                activeTeamIndex: 0,
-                roundState: {}
             };
 
             // --- NAVIGATION ---
@@ -155,19 +115,12 @@
                     loadingState.classList.remove('hidden');
                     
                     try {
-                        if (!gameState.gameData) {
-                            const gameData = await generateGameContent();
-                            if (!gameData) throw new Error("AI failed to generate game data.");
-                            gameState.gameData = gameData;
-                            gameState.teams = [
-                                { name: 'Team 1', score: 0 },
-                                { name: 'Team 2', score: 0 }
-                            ];
-                        }
+                        // Always fetch fresh data for the selected round
+                        const gameData = await generateGameContent(round);
+                        if (!gameData) throw new Error("AI failed to generate game data.");
                         
+                        gameState.gameData = gameData;
                         gameState.currentRound = round;
-                        gameState.activeTeamIndex = 0;
-                        gameState.roundState = {};
                         
                         renderGame();
                         showPage('game');
@@ -184,12 +137,8 @@
                 showPage('mainMenu');
             });
 
-            // --- EVENT LISTENERS ---
-            addTeamBtn.addEventListener('click', addTeam);
-
             // --- GAME LOGIC ---
             function renderGame() {
-                renderTeams();
                 switch (gameState.currentRound) {
                     case 1: renderFamilyFeud(); break;
                     case 2: renderRapidFire(); break;
@@ -197,192 +146,67 @@
                 }
             }
 
-            function renderTeams() {
-                scoreboardContainer.innerHTML = '';
-                gameState.teams.forEach((team, index) => {
-                    const teamDiv = document.createElement('div');
-                    teamDiv.className = 'scoreboard-team p-4 bg-gray-700 rounded-lg flex justify-between items-center';
-                    if (index === gameState.activeTeamIndex) {
-                        teamDiv.classList.add('active', 'border-blue-500', 'border-2');
-                    }
-
-                    const teamNameSpan = document.createElement('span');
-                    teamNameSpan.className = 'font-bold text-lg cursor-pointer';
-                    teamNameSpan.textContent = team.name;
-                    
-                    teamNameSpan.addEventListener('click', () => {
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = team.name;
-                        input.className = 'team-name-input font-bold text-lg';
-                        teamNameSpan.replaceWith(input);
-                        input.focus();
-
-                        const saveName = () => {
-                            if (input.value.trim()) renameTeam(index, input.value.trim());
-                            else renderGame();
-                        };
-                        
-                        input.addEventListener('blur', saveName);
-                        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
-                    });
-
-                    const teamScoreSpan = document.createElement('span');
-                    teamScoreSpan.className = 'text-2xl font-black text-yellow-300';
-                    teamScoreSpan.textContent = team.score;
-
-                    teamDiv.appendChild(teamNameSpan);
-                    teamDiv.appendChild(teamScoreSpan);
-                    scoreboardContainer.appendChild(teamDiv);
-                });
-            }
-
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud[0];
-                if (!gameState.roundState.revealed) gameState.roundState = { revealed: [], strikes: 0, lastPoints: 0 };
-
                 let answerHTML = roundData.answers.map((ans, index) => {
-                    const isRevealed = gameState.roundState.revealed.includes(index);
-                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}"><div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div><div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div></div>`;
+                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer bg-blue-900 border-2 border-blue-500" data-index="${index}">
+                                <div class="card-face w-full h-full flex items-center justify-center">
+                                    <span class="text-3xl font-bold text-blue-300">${index + 1}</span>
+                                </div>
+                                <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg" style="display: none;">
+                                    <span class="text-lg font-semibold">${ans.answer}</span>
+                                    <span class="text-2xl font-bold text-yellow-300">${ans.points}</span>
+                                </div>
+                            </div>`;
                 }).join('');
-                
-                let awardButtonsHTML = gameState.teams.map((team, index) => `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`).join('');
 
                 gameContent.innerHTML = `
                     <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>
-                    <div class="flex justify-between items-center mt-8">
-                         <div id="award-buttons-container" class="flex flex-wrap gap-2">${awardButtonsHTML}</div>
-                        <div class="flex items-center space-x-4">
-                            <span class="text-xl font-bold text-red-500">Strikes:</span>
-                            <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
-                            <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
-                        </div>
-                         <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Team</button></div>
-                    </div>`;
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>`;
                 
                 document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    if (!gameState.roundState.revealed.includes(index)) {
-                        gameState.roundState.lastPoints = roundData.answers[index].points;
-                        gameState.roundState.revealed.push(index);
-                        renderGame();
-                    }
-                }));
-                
-                document.getElementById('strike-btn').addEventListener('click', () => {
-                    if (gameState.roundState.strikes < 3) {
-                        gameState.roundState.strikes++;
-                        if (gameState.roundState.strikes >= 3) switchActiveTeam();
-                        else renderGame();
-                    }
-                });
-
-                document.getElementById('switch-team-btn').addEventListener('click', switchActiveTeam);
-                
-                document.querySelectorAll('#award-buttons-container button').forEach(btn => btn.addEventListener('click', (e) => {
-                    const teamIndex = parseInt(e.currentTarget.dataset.teamIndex);
-                    if (gameState.roundState.lastPoints > 0) {
-                        awardPoints(teamIndex, gameState.roundState.lastPoints);
-                        gameState.roundState.lastPoints = 0;
+                    const cardElement = e.currentTarget;
+                    cardElement.classList.toggle('flipped');
+                    const face = cardElement.querySelector('.card-face');
+                    const back = cardElement.querySelector('.card-back');
+                    if (cardElement.classList.contains('flipped')) {
+                        face.style.display = 'none';
+                        back.style.display = 'flex';
+                    } else {
+                        face.style.display = 'flex';
+                        back.style.display = 'none';
                     }
                 }));
             }
 
             function renderRapidFire() {
-                const activeTeam = gameState.teams[gameState.activeTeamIndex];
-                if (!activeTeam) return;
-                if (gameState.roundState.questionIndex === undefined) gameState.roundState.questionIndex = 0;
-
-                const questions = gameState.gameData.rapidFire;
-                const currentQuestion = questions[gameState.roundState.questionIndex];
-
-                if (!currentQuestion) {
-                    gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2>`;
-                    return;
-                }
+                const roundData = gameState.gameData.rapidFire;
+                let questionsHTML = roundData.map(item => `
+                    <div class="p-4 bg-gray-800 rounded-lg">
+                        <p class="font-bold text-lg">${item.question}</p>
+                        <p class="text-green-400">${item.answer}</p>
+                    </div>
+                `).join('');
 
                 gameContent.innerHTML = `
-                    <div class="text-center flex flex-col items-center justify-center h-full">
-                        <p class="text-xl text-gray-400 mb-2">${activeTeam.name}'s Turn</p>
-                        <h2 class="text-4xl font-bold mb-8">${currentQuestion.question}</h2>
-                        <div class="mt-8 flex space-x-4">
-                            <button id="correct-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Correct</button>
-                            <button id="pass-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg text-lg">Pass</button>
-                            <button id="switch-team-rf-btn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Switch Team</button>
-                        </div>
-                    </div>`;
-                
-                document.getElementById('correct-btn').addEventListener('click', () => {
-                    awardPoints(gameState.activeTeamIndex, 10);
-                    nextRapidFireQuestion();
-                });
-                document.getElementById('pass-btn').addEventListener('click', nextRapidFireQuestion);
-                document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
-                    gameState.roundState.questionIndex = 0;
-                    switchActiveTeam();
-                });
-            }
-
-            function nextRapidFireQuestion() {
-                gameState.roundState.questionIndex++;
-                renderGame();
+                    <h2 class="text-3xl font-bold text-center mb-6">Rapid Fire Questions</h2>
+                    <div class="space-y-4">${questionsHTML}</div>`;
             }
 
             function renderKPIIdentifier() {
-                const activeTeam = gameState.teams[gameState.activeTeamIndex];
-                if (!activeTeam) return;
-                if (!gameState.roundState.selected) gameState.roundState.selected = [];
-
-                const roundData = gameState.gameData.kpiIdentifier[0];
-
-                let kpiHTML = roundData.kpis.map((kpi, index) => {
-                    const isSelected = gameState.roundState.selected.includes(index);
-                    return `<div class="kpi-card p-4 rounded-lg cursor-pointer border-2 ${isSelected ? 'bg-blue-600 border-blue-400' : 'bg-gray-700 border-gray-600 hover:border-blue-500'}" data-index="${index}"><p class="text-lg font-semibold">${kpi.kpi}</p></div>`;
-                }).join('');
+                const roundData = gameState.gameData.kpiIdentifier;
+                const kpiListHTML = roundData.kpis.map(kpi => `<li class="kpi-list-item">${kpi}</li>`).join('');
 
                 gameContent.innerHTML = `
                     <div class="text-center">
-                        <h2 class="text-2xl font-bold mb-2">Client Scenario:</h2>
-                        <p class="text-lg text-gray-300 mb-6 max-w-3xl mx-auto">${roundData.scenario}</p>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">${kpiHTML}</div>
-                    <div class="text-center mt-8"><button id="submit-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Submit for ${activeTeam.name}</button></div>`;
-
-                document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    const selected = gameState.roundState.selected;
-                    if (selected.includes(index)) {
-                        gameState.roundState.selected = selected.filter(i => i !== index);
-                    } else {
-                        gameState.roundState.selected.push(index);
-                    }
-                    renderGame();
-                }));
-                
-                document.getElementById('submit-kpis-btn').addEventListener('click', () => {
-                    let scoreChange = 0;
-                    const selectedIndexes = gameState.roundState.selected;
-                    const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
-                    
-                    selectedIndexes.forEach(selectedIndex => { scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10; });
-                    
-                    awardPoints(gameState.activeTeamIndex, scoreChange);
-                    gameState.roundState.selected = [];
-                    switchActiveTeam();
-                });
+                        <h2 class="text-3xl font-bold mb-2">Whatfix Champion Persona</h2>
+                        <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
+                        <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
+                        <h4 class="text-2xl font-bold mb-4">Potential KPIs</h4>
+                        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul>
+                    </div>`;
             }
 
-            // --- HELPER & UTILITY FUNCTIONS ---
-            function addTeam() {
-                if (gameState.teams) {
-                    gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
-                    renderGame();
-                }
-            }
-            function renameTeam(index, newName) { gameState.teams[index].name = newName; renderGame(); }
-            function awardPoints(teamIndex, points) { gameState.teams[teamIndex].score += points; renderGame(); }
-            function switchActiveTeam() { gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length; renderGame(); }
             function showMessage(message, isError = false) {
                 messageArea.textContent = message;
                 messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
@@ -390,19 +214,16 @@
             }
 
             // --- AI CONTENT GENERATION ---
-            async function generateGameContent() {
-                const prompt = `
-                    Create a team-building game called 'Client Clash' for Customer Success Managers and Project Managers.
-                    Generate content for three rounds: EMEA Feud, Rapid Fire, and KPI Identifier.
-                    The tone should be professional but fun. Questions should be relevant to client management, project lifecycles, common acronyms, and business metrics, with a slight focus on the EMEA region for the Feud round.
+            async function generateGameContent(round) {
+                let prompt;
+                if (round === 1) {
+                    prompt = `Generate content for a game called 'EMEA Feud'. The question should be about a common business challenge for companies expanding in the EMEA region. Provide 4 popular answers with points. Return ONLY a valid JSON object like this: {"familyFeud": [{"question": "...", "answers": [{"answer": "...", "points": ...}]}]}`;
+                } else if (round === 2) {
+                    prompt = `Generate 5 'Rapid Fire' questions and answers for Customer Success and Project Managers. The tone should be professional but fun. Return ONLY a valid JSON object like this: {"rapidFire": [{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]}`;
+                } else if (round === 3) {
+                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                }
 
-                    Return the output ONLY as a valid JSON object with the following structure:
-                    {
-                      "familyFeud": [ { "question": "Name a common business challenge for companies expanding in the EMEA region.", "answers": [ { "answer": "Navigating diverse regulations (like GDPR)", "points": 40 }, { "answer": "Localizing products/services", "points": 30 }, { "answer": "Cultural and language differences", "points": 20 }, { "answer": "Managing different currencies", "points": 10 } ] } ],
-                      "rapidFire": [ { "question": "What does 'SLA' stand for?", "answer": "Service Level Agreement" }, { "question": "What is a 'key stakeholder'?", "answer": "A person with interest in a project's outcome" }, { "question": "What does 'GDPR' regulate?", "answer": "Data protection and privacy" } ],
-                      "kpiIdentifier": [ { "scenario": "A SaaS company in the UK has seen a 30% increase in support tickets from its German user base after a new feature launch. Customer satisfaction is dropping.", "kpis": [ { "kpi": "First Response Time in German", "relevant": true }, { "kpi": "Resolution Rate for German tickets", "relevant": true }, { "kpi": "Feature Adoption Rate in Germany", "relevant": true }, { "kpi": "Website traffic from the US", "relevant": false } ] } ]
-                    }`;
-                
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
                 const apiKey = "YOUR_API_KEY_HERE"; 
@@ -410,7 +231,7 @@
                 
                 if (apiKey === "YOUR_API_KEY_HERE") {
                     showMessage("API Key not set. Using fallback data.", true);
-                    return {"familyFeud":[{"question":"Name a common business challenge for companies expanding in the EMEA region.","answers":[{"answer":"Navigating diverse regulations (like GDPR)","points":40},{"answer":"Localizing products/services","points":30},{"answer":"Cultural and language differences","points":20},{"answer":"Managing different currencies","points":10}]}],"rapidFire":[{"question":"What does 'SLA' stand for?","answer":"Service Level Agreement"},{"question":"What is a 'key stakeholder'?","answer":"A person with interest in a project's outcome"}],"kpiIdentifier":[{"scenario":"A SaaS company in the UK has seen a 30% increase in support tickets from its German user base after a new feature launch. Customer satisfaction is dropping.","kpis":[{"kpi":"First Response Time in German","relevant":true},{"kpi":"Resolution Rate for German tickets","relevant":true},{"kpi":"Feature Adoption Rate in Germany","relevant":true},{"kpi":"Website traffic from the US","relevant":false}]}]};
+                    return getFallbackData(round);
                 }
 
                 try {
@@ -422,7 +243,17 @@
                 } catch (error) {
                     console.error("AI content generation failed:", error);
                     showMessage("Could not connect to AI. Using fallback data.", true);
-                    return {"familyFeud":[{"question":"Name a common business challenge for companies expanding in the EMEA region.","answers":[{"answer":"Navigating diverse regulations (like GDPR)","points":40},{"answer":"Localizing products/services","points":30},{"answer":"Cultural and language differences","points":20},{"answer":"Managing different currencies","points":10}]}],"rapidFire":[{"question":"What does 'SLA' stand for?","answer":"Service Level Agreement"},{"question":"What is a 'key stakeholder'?","answer":"A person with interest in a project's outcome"}],"kpiIdentifier":[{"scenario":"A SaaS company in the UK has seen a 30% increase in support tickets from its German user base after a new feature launch. Customer satisfaction is dropping.","kpis":[{"kpi":"First Response Time in German","relevant":true},{"kpi":"Resolution Rate for German tickets","relevant":true},{"kpi":"Feature Adoption Rate in Germany","relevant":true},{"kpi":"Website traffic from the US","relevant":false}]}]};
+                    return getFallbackData(round);
+                }
+            }
+
+            function getFallbackData(round) {
+                if (round === 1) {
+                    return {"familyFeud":[{"question":"Name a common business challenge for companies expanding in the EMEA region.","answers":[{"answer":"Navigating diverse regulations (like GDPR)","points":40},{"answer":"Localizing products/services","points":30},{"answer":"Cultural and language differences","points":20},{"answer":"Managing different currencies","points":10}]}]};
+                } else if (round === 2) {
+                    return {"rapidFire":[{"question":"What does 'SLA' stand for?","answer":"Service Level Agreement"},{"question":"What is a 'key stakeholder'?","answer":"A person with interest in a project's outcome"},{"question":"What does 'GDPR' regulate?","answer":"Data protection and privacy"}]};
+                } else if (round === 3) {
+                    return {"kpiIdentifier":{"role":"Head of Sales Enablement","description":"The Head of Sales Enablement is responsible for equipping the sales team with the tools, content, and training needed to succeed. Their primary challenge is ensuring consistent adoption of sales software (like Salesforce) and methodologies across a distributed team, reducing ramp-up time for new hires, and ensuring that the sales process is followed correctly to maximize revenue opportunities.","kpis":["Time to First Deal for New Hires","Salesforce Adoption & Data Accuracy","Quota Attainment Rate","Sales Cycle Length","Lead Conversion Rate","Content Utilization Rate"]}};
                 }
             }
         });
