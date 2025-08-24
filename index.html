@@ -43,6 +43,16 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
 
+    <!-- Independent Timer -->
+    <div id="timer-container" class="absolute top-4 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4 z-10">
+        <div id="timer-display" class="text-5xl text-red-500 font-black">60</div>
+        <div class="flex flex-col space-y-2">
+            <button id="timer-start-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Start</button>
+            <button id="timer-stop-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-1 px-3 rounded-md text-sm">Stop</button>
+            <button id="timer-reset-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md text-sm">Reset</button>
+        </div>
+    </div>
+
     <div id="app" class="w-full max-w-7xl mx-auto">
         <!-- Header -->
         <header class="text-center mb-6 pt-4">
@@ -96,12 +106,18 @@
             const loadingState = document.getElementById('loading-state');
             const messageArea = document.getElementById('message-area');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
+            const timerDisplay = document.getElementById('timer-display');
+            const timerStartBtn = document.getElementById('timer-start-btn');
+            const timerStopBtn = document.getElementById('timer-stop-btn');
+            const timerResetBtn = document.getElementById('timer-reset-btn');
 
             // --- GAME STATE ---
             let gameState = {
                 gameData: null,
                 currentRound: 0,
             };
+            let timerInterval;
+            let timeLeft = 60;
 
             // --- NAVIGATION ---
             function showPage(pageName) {
@@ -135,6 +151,32 @@
             backToMenuBtn.addEventListener('click', () => {
                 showPage('mainMenu');
             });
+
+            // --- TIMER LOGIC ---
+            function startTimer() {
+                clearInterval(timerInterval); // Prevent multiple intervals
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                    }
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+            }
+
+            function resetTimer() {
+                clearInterval(timerInterval);
+                timeLeft = 60;
+                timerDisplay.textContent = timeLeft;
+            }
+
+            timerStartBtn.addEventListener('click', startTimer);
+            timerStopBtn.addEventListener('click', stopTimer);
+            timerResetBtn.addEventListener('click', resetTimer);
 
             // --- GAME LOGIC ---
             function renderGame() {
