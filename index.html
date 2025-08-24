@@ -48,6 +48,10 @@
             border-radius: 4px;
             width: 120px;
         }
+        .team-card.active {
+             box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+             border-color: #3b82f6;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
@@ -96,9 +100,9 @@
             <div id="instructions-page" class="page">
                 <div class="game-board p-6 rounded-2xl shadow-2xl text-center">
                     <h2 id="instructions-title" class="text-3xl font-bold mb-4"></h2>
-                    <p id="instructions-text" class="text-lg text-gray-300 max-w-3xl mx-auto mb-6"></p>
-                    <div id="loading-state" class="hidden my-4">
-                        <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <div id="instructions-text" class="text-lg text-left text-gray-300 max-w-3xl mx-auto mb-6 space-y-2"></div>
+                    <div id="loading-state-instructions" class="hidden my-4">
+                        <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -130,7 +134,7 @@
                 game: document.getElementById('game-page'),
             };
             const gameContent = document.getElementById('game-content');
-            const loadingState = document.getElementById('loading-state');
+            const loadingState = document.getElementById('loading-state-instructions');
             const messageArea = document.getElementById('message-area');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
             const timerDisplay = document.getElementById('timer-display');
@@ -148,6 +152,7 @@
                 gameData: null,
                 currentRound: 0,
                 questionIndex: 0,
+                activeTeamIndex: 0,
                 teams: [
                     { name: 'Team 1', score: 0 },
                     { name: 'Team 2', score: 0 }
@@ -155,11 +160,32 @@
             };
             let timerInterval;
             let timeLeft = 60;
+            let roundTimerInterval;
 
             const INSTRUCTIONS = {
-                1: { title: "EMEA Feud", text: "A case study of a potential EMEA client will be presented. Your goal is to identify the client's key pain points by reviewing a series of 'pure signal' questions and their ideal answers." },
-                2: { title: "Fastest Finger First", text: "Test your knowledge of key CSM and PM metrics. A scenario will be presented, and you'll be asked to either define or calculate a specific metric. Hover over the answer to reveal it." },
-                3: { title: "KPI Identifier", text: "Analyze a randomly generated Whatfix sponsor or champion persona. Review their role, challenges, and the key performance indicators (KPIs) that Whatfix can impact for them." }
+                1: { title: "EMEA Feud", text: `
+                    <p><strong>Objective:</strong> A case study of a potential client will be presented. Your goal is to identify the client's key pain points by guessing a series of critical questions identified by the AI.</p>
+                    <ul class="list-disc list-inside mt-2">
+                        <li>Teams have <strong>2 minutes</strong> to read the case study together.</li>
+                        <li>Each person has <strong>15 seconds</strong> to guess an answer before control moves to the next team.</li>
+                        <li>A team gets <strong>2 wrong attempts</strong>. After that, the question passes to the next team for a steal.</li>
+                        <li><strong>Scoring:</strong> 10 points per right question, 40 bonus points for getting all questions, and 20 bonus points for a successful steal.</li>
+                    </ul>` },
+                2: { title: "Fastest Finger First", text: `
+                    <p><strong>Objective:</strong> Test your quick calculation and knowledge of key metrics.</p>
+                    <ul class="list-disc list-inside mt-2">
+                        <li>The first team to use the buzzer gets <strong>5 seconds</strong> to answer.</li>
+                        <li>A correct answer earns <strong>40 points</strong>.</li>
+                        <li>A wrong answer deducts <strong>20 points</strong>.</li>
+                        <li>Questions are not passed to other teams.</li>
+                    </ul>` },
+                3: { title: "KPI Identifier", text: `
+                    <p><strong>Objective:</strong> Analyze a sponsor/champion persona and identify their relevant KPIs.</p>
+                     <ul class="list-disc list-inside mt-2">
+                        <li>You have <strong>1 minute</strong> to guess all relevant KPIs for the stakeholder.</li>
+                        <li>The AI will identify the top 6 KPIs. Every correct guess earns <strong>10 points</strong>.</li>
+                        <li>You can use a <strong>Joker</strong> to double your points if you think you can guess all 6 correctly.</li>
+                    </ul>` }
             };
 
             // --- SCOREBOARD LOGIC ---
@@ -167,7 +193,10 @@
                 teamsContainer.innerHTML = '';
                 gameState.teams.forEach((team, index) => {
                     const teamEl = document.createElement('div');
-                    teamEl.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
+                    teamEl.className = 'team-card flex items-center gap-2 bg-gray-800 p-2 rounded-lg border-2 border-transparent transition-all';
+                    if (index === gameState.activeTeamIndex) {
+                        teamEl.classList.add('active');
+                    }
                     
                     const nameSpan = document.createElement('span');
                     nameSpan.className = 'font-bold cursor-pointer';
@@ -232,7 +261,7 @@
                     const round = parseInt(e.currentTarget.dataset.round);
                     gameState.currentRound = round;
                     instructionsTitle.textContent = INSTRUCTIONS[round].title;
-                    instructionsText.textContent = INSTRUCTIONS[round].text;
+                    instructionsText.innerHTML = INSTRUCTIONS[round].text;
                     showPage('instructions');
                 });
             });
@@ -313,6 +342,20 @@
                      renderGame(); // Re-render to restore button state
                 }
             }
+            
+            function runRoundTimer(duration, displayEl, onEnd) {
+                clearInterval(roundTimerInterval);
+                let roundTimeLeft = duration;
+                displayEl.textContent = roundTimeLeft;
+                roundTimerInterval = setInterval(() => {
+                    roundTimeLeft--;
+                    displayEl.textContent = roundTimeLeft;
+                    if (roundTimeLeft <= 0) {
+                        clearInterval(roundTimerInterval);
+                        if (onEnd) onEnd();
+                    }
+                }, 1000);
+            }
 
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud;
@@ -332,26 +375,48 @@
                 gameContent.innerHTML = `
                     <div class="text-center"><h2 class="text-3xl font-bold mb-4">EMEA Feud Case Study</h2></div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
-                    <div class="space-y-4">${questionHTML}</div>
-                    <div class="text-center mt-4">
-                        <button id="next-feud-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">
-                            ${isLastQuestion ? 'Next Case' : 'Next Question'}
-                        </button>
-                    </div>
+                    <div id="feud-timer-section" class="text-center mb-4"></div>
+                    <div id="feud-question-section" class="space-y-4 hidden">${questionHTML}</div>
+                    <div id="feud-controls" class="text-center mt-4"></div>
                     `;
                 
-                document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
-                    document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
-                    e.currentTarget.style.display = 'none';
-                });
+                const timerSection = document.getElementById('feud-timer-section');
+                const questionSection = document.getElementById('feud-question-section');
+                const controlsSection = document.getElementById('feud-controls');
 
-                document.getElementById('next-feud-btn').addEventListener('click', (e) => {
-                    if (isLastQuestion) {
-                        refreshContent(1, e.currentTarget);
-                    } else {
-                        gameState.questionIndex++;
-                        renderFamilyFeud();
-                    }
+                function startGuessingPhase() {
+                    timerSection.innerHTML = `<p class="text-xl">Guessing time: <span id="guess-timer" class="font-bold text-2xl text-yellow-400">15</span>s</p>`;
+                    questionSection.classList.remove('hidden');
+                    controlsSection.innerHTML = `<button id="next-feud-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">${isLastQuestion ? 'Next Case' : 'Next Question'}</button>`;
+                    
+                    document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
+                        document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
+                        e.currentTarget.style.display = 'none';
+                    });
+
+                    document.getElementById('next-feud-btn').addEventListener('click', (e) => {
+                        if (isLastQuestion) {
+                            refreshContent(1, e.currentTarget);
+                        } else {
+                            gameState.questionIndex++;
+                            gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
+                            renderFamilyFeud();
+                        }
+                    });
+
+                    const guessTimerEl = document.getElementById('guess-timer');
+                    runRoundTimer(15, guessTimerEl, () => {
+                        // Auto-advance to next team/question on timeout
+                        document.getElementById('next-feud-btn').click();
+                    });
+                }
+
+                timerSection.innerHTML = `<button id="start-reading-btn" class="btn bg-blue-600 hover:bg-blue-700">Start 2-Min Reading Timer</button>`;
+                document.getElementById('start-reading-btn').addEventListener('click', (e) => {
+                    e.currentTarget.style.display = 'none';
+                    timerSection.innerHTML = `<p class="text-xl">Reading time left: <span id="read-timer" class="font-bold text-2xl text-yellow-400">120</span>s</p>`;
+                    const readTimerEl = document.getElementById('read-timer');
+                    runRoundTimer(120, readTimerEl, startGuessingPhase);
                 });
             }
             
