@@ -55,7 +55,6 @@
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
-
     <!-- Scoreboard Bar -->
     <div id="scoreboard-bar" class="absolute top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 p-4 z-20">
         <div class="w-full max-w-7xl mx-auto flex items-center gap-4">
@@ -258,7 +257,7 @@
                         gameState.teams[index].score -= 10;
                         renderScoreboard();
                     });
-
+                    
                     teamEl.appendChild(nameSpan);
                     teamEl.appendChild(minusBtn);
                     teamEl.appendChild(scoreSpan);
@@ -419,13 +418,18 @@
                 
                 const isLastQuestion = gameState.questionIndex >= roundData.length - 1;
 
+                let navigationButtonsHTML = '';
+                if (isLastQuestion) {
+                    navigationButtonsHTML = `<button id="next-scenarios-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Next Scenarios</button>`;
+                } else {
+                    navigationButtonsHTML = `<button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Next Question</button>`;
+                }
+
                 gameContent.innerHTML = `
                     <div class="text-center mb-6"><h2 class="text-3xl font-bold">Fastest Finger First</h2></div>
                     <div class="space-y-4">${questionHTML}</div>
                      <div class="text-center mt-4">
-                        <button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">
-                            ${isLastQuestion ? 'Next Scenarios' : 'Next Question'}
-                        </button>
+                        ${navigationButtonsHTML}
                     </div>`;
 
                 document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
@@ -433,14 +437,16 @@
                     e.currentTarget.style.display = 'none';
                 });
 
-                document.getElementById('next-fff-btn').addEventListener('click', (e) => {
-                     if (isLastQuestion) {
+                if (isLastQuestion) {
+                    document.getElementById('next-scenarios-btn').addEventListener('click', (e) => {
                         refreshContent(2, e.currentTarget);
-                    } else {
+                    });
+                } else {
+                    document.getElementById('next-fff-btn').addEventListener('click', () => {
                         gameState.questionIndex++;
                         renderFastestFingerFirst();
-                    }
-                });
+                    });
+                }
             }
 
             function renderKPIIdentifier() {
@@ -524,7 +530,7 @@
                 } else if (round === 2) {
                     prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
-                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
@@ -540,6 +546,12 @@
                         throw new Error(`API request failed with status ${response.status}`);
                     }
                     const result = await response.json();
+
+                    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts || !result.candidates[0].content.parts[0]) {
+                        console.error("Invalid API response structure:", result);
+                        throw new Error("Received an invalid response from the AI service.");
+                    }
+
                     const jsonText = result.candidates[0].content.parts[0].text;
                     const parsedJson = JSON.parse(jsonText);
                     console.log("Gemini API Response:", parsedJson);
