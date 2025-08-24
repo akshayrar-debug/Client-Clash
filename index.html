@@ -39,20 +39,6 @@
             border-radius: 0.5rem;
             font-weight: 500;
         }
-        .answer-card {
-            transform-style: preserve-3d;
-            transition: transform 0.5s;
-        }
-        .answer-card.flipped {
-            transform: rotateY(180deg);
-        }
-        .card-face, .card-back {
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-        }
-        .card-back {
-            transform: rotateY(180deg);
-        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
@@ -160,26 +146,29 @@
             }
 
             function renderFamilyFeud() {
-                const roundData = gameState.gameData.familyFeud[0];
-                let answerHTML = roundData.answers.map((ans, index) => {
-                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer bg-blue-900 border-2 border-blue-500 relative" data-index="${index}">
-                                <div class="card-face w-full h-full flex items-center justify-center absolute">
-                                    <span class="text-3xl font-bold text-blue-300">${index + 1}</span>
-                                </div>
-                                <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg absolute">
-                                    <span class="text-lg font-semibold">${ans.answer}</span>
-                                    <span class="text-2xl font-bold text-yellow-300">${ans.points}</span>
-                                </div>
-                            </div>`;
-                }).join('');
+                const roundData = gameState.gameData.familyFeud;
+                let questionsHTML = roundData.questions.map((item, index) => `
+                    <div class="p-4 bg-gray-800 rounded-lg">
+                        <p class="font-bold text-lg">${item.q}</p>
+                        <div class="flex items-center gap-4 mt-2">
+                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow">${item.a}</p>
+                            <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                        </div>
+                    </div>
+                `).join('');
 
                 gameContent.innerHTML = `
-                    <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>`;
+                    <div class="text-center"><h2 class="text-3xl font-bold mb-4">EMEA Feud Case Study</h2></div>
+                    <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
+                    <div class="space-y-4">${questionsHTML}</div>`;
                 
-                document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
-                    e.currentTarget.classList.toggle('flipped');
-                }));
+                document.querySelectorAll('.show-answer-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const targetId = e.currentTarget.dataset.target;
+                        document.getElementById(targetId).classList.remove('blur-sm');
+                        e.currentTarget.style.display = 'none';
+                    });
+                });
             }
 
             function renderRapidFire() {
@@ -249,7 +238,7 @@
             async function generateGameContent(round) {
                 let prompt;
                 if (round === 1) {
-                    prompt = `Generate content for a game called 'EMEA Feud'. The question should be about a common business challenge for companies expanding in the EMEA region. Provide 4 popular answers with points. Return ONLY a valid JSON object like this: {"familyFeud": [{"question": "...", "answers": [{"answer": "...", "points": ...}]}]}`;
+                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
                 } else if (round === 2) {
                     prompt = `Generate 5 'Rapid Fire' questions and answers for Customer Success and Project Managers. The tone should be professional but fun. Return ONLY a valid JSON object like this: {"rapidFire": [{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]}`;
                 } else if (round === 3) {
@@ -281,7 +270,7 @@
 
             function getFallbackData(round) {
                 if (round === 1) {
-                    return {"familyFeud":[{"question":"Name a common business challenge for companies expanding in the EMEA region.","answers":[{"answer":"Navigating diverse regulations (like GDPR)","points":40},{"answer":"Localizing products/services","points":30},{"answer":"Cultural and language differences","points":20},{"answer":"Managing different currencies","points":10}]}]};
+                    return {"familyFeud": {"case": "A large financial services firm headquartered in Frankfurt is migrating its core banking software to a new cloud-based platform. The rollout has been slow, with significant resistance from employees across multiple countries due to the complexity of the new system and inconsistent training.", "questions": [{"q": "How are you currently measuring the success of this platform migration?", "a": "We're tracking user login rates, but we lack deeper insights into feature adoption."}, {"q": "What's the business impact of the slow employee adoption so far?", "a": "Productivity has dropped, and we're seeing a spike in support tickets, increasing operational costs."}, {"q": "How do you ensure consistent training for your teams in different countries like France and the UK?", "a": "It's a challenge; we rely on virtual workshops, but engagement is low and materials are often outdated."}, {"q": "What is the current process for handling 'how-to' questions from employees on the new software?", "a": "They primarily go to the IT helpdesk or specialized 'power users', which isn't scalable."}, {"q": "How does this migration project tie into your larger goals around digital transformation?", "a": "It's critical. We need to ensure data is handled correctly in the new system, but inconsistent usage puts us at risk."}]}};
                 } else if (round === 2) {
                     return {"rapidFire":[{"question":"What does 'SLA' stand for?","answer":"Service Level Agreement"},{"question":"What is a 'key stakeholder'?","answer":"A person with interest in a project's outcome"},{"question":"What does 'GDPR' regulate?","answer":"Data protection and privacy"}]};
                 } else if (round === 3) {
