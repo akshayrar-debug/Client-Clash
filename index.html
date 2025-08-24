@@ -92,9 +92,6 @@
                         <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
                         <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
                     </div>
-                    <div class="mt-6">
-                        <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg" disabled>Moderator View</button>
-                    </div>
                 </div>
             </div>
 
@@ -148,7 +145,6 @@
             const instructionsTitle = document.getElementById('instructions-title');
             const instructionsText = document.getElementById('instructions-text');
             const startGameBtn = document.getElementById('start-game-btn');
-            const moderatorViewBtn = document.getElementById('moderator-view-btn');
 
             // --- GAME STATE ---
             let gameState = {
@@ -287,7 +283,6 @@
                     
                     renderGame();
                     showPage('game');
-                    moderatorViewBtn.disabled = false;
                 } catch (error) {
                     console.error("Error starting game:", error);
                     showMessage("Failed to start game. Please try again.", true);
@@ -301,35 +296,6 @@
             backToMenuBtn.addEventListener('click', () => {
                 showPage('mainMenu');
             });
-            
-            // --- MODERATOR VIEW LOGIC ---
-            moderatorViewBtn.addEventListener('click', () => {
-                const content = getModeratorContentHTML();
-                const newTab = window.open();
-                newTab.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Moderator View</title>
-                        <script src="https://cdn.tailwindcss.com"><\/script>
-                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-                        <style>
-                            body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
-                            .game-board { background-color: #1f2937; border: 1px solid #374151; }
-                            .kpi-list-item { background-color: #374151; padding: 0.75rem; border-radius: 0.5rem; font-weight: 500; }
-                        </style>
-                    </head>
-                    <body class="p-8">
-                        <div class="game-board p-6 rounded-2xl shadow-2xl max-w-4xl mx-auto">
-                            ${content}
-                        </div>
-                    </body>
-                    </html>
-                `);
-                newTab.document.close();
-            });
-
 
             // --- TIMER LOGIC ---
             function startTimer() {
@@ -364,6 +330,8 @@
                     case 2: renderFastestFingerFirst(); break;
                     case 3: renderKPIIdentifier(); break;
                 }
+                // Attach listener for the new moderator view button
+                document.getElementById('moderator-view-btn-game').addEventListener('click', openModeratorViewInNewTab);
             }
 
             async function refreshContent(round, btn) {
@@ -395,6 +363,7 @@
                 gameContent.innerHTML = `
                     <div class="flex justify-center items-center gap-4 mb-4">
                         <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
+                        <button id="moderator-view-btn-game" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
                         <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
                     </div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
@@ -434,7 +403,10 @@
                 }
 
                 gameContent.innerHTML = `
-                    <div class="text-center mb-6"><h2 class="text-3xl font-bold">Fastest Finger First</h2></div>
+                    <div class="text-center mb-6 flex justify-center items-center gap-4">
+                        <h2 class="text-3xl font-bold">Fastest Finger First</h2>
+                        <button id="moderator-view-btn-game" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
+                    </div>
                     <div class="space-y-4">${questionHTML}</div>
                      <div class="text-center mt-4">
                         ${navigationButtonsHTML}
@@ -465,6 +437,7 @@
                     <div class="text-center">
                         <div class="flex justify-center items-center gap-4 mb-2">
                             <h2 class="text-3xl font-bold">Whatfix Champion Persona</h2>
+                             <button id="moderator-view-btn-game" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
                         </div>
                         <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
                         <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
@@ -485,6 +458,33 @@
                 });
             }
             
+            function openModeratorViewInNewTab() {
+                const content = getModeratorContentHTML();
+                const newTab = window.open();
+                newTab.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Moderator View</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+                        <style>
+                            body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
+                            .game-board { background-color: #1f2937; border: 1px solid #374151; }
+                            .kpi-list-item { background-color: #374151; padding: 0.75rem; border-radius: 0.5rem; font-weight: 500; }
+                        </style>
+                    </head>
+                    <body class="p-8">
+                        <div class="game-board p-6 rounded-2xl shadow-2xl max-w-4xl mx-auto">
+                            ${content}
+                        </div>
+                    </body>
+                    </html>
+                `);
+                newTab.document.close();
+            }
+
             function getModeratorContentHTML() {
                 const round = gameState.currentRound;
                 const data = gameState.gameData;
@@ -499,9 +499,8 @@
                     let questionsHTML = roundData.questions.map(item => `
                         <div class="p-4 bg-gray-800 rounded-lg text-left">
                             <p class="font-bold text-lg">${item.q}</p>
-                            <p class="text-green-400 mt-1">${item.a}</p>
                         </div>`).join('');
-                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Answers)</h2>
+                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Moderator)</h2>
                                <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
                                <div class="space-y-4">${questionsHTML}</div>`;
                 } else if (round === 2) {
@@ -538,7 +537,7 @@
             async function generateGameContent(round) {
                 let prompt;
                 if (round === 1) {
-                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
+                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "..."}]}}`;
                 } else if (round === 2) {
                     prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
