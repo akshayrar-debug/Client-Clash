@@ -23,6 +23,10 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .answer-card, .kpi-card {
             transition: all 0.3s ease;
             transform-style: preserve-3d;
@@ -105,7 +109,7 @@
                 <div class="game-board p-6 rounded-2xl shadow-2xl">
                     <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
                         <h2 class="text-2xl font-bold">Scoreboard</h2>
-                        <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">+</button>
+                        <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm" disabled>+</button>
                     </div>
                     <div id="scoreboard" class="space-y-4">
                         <!-- Teams will be dynamically added here -->
@@ -248,6 +252,7 @@
                 loadingState.classList.add('hidden');
                 startOptions.classList.remove('hidden');
                 scoreboardContainer.innerHTML = '';
+                addTeamBtn.disabled = true;
             }
 
             function advanceRound() {
@@ -283,6 +288,7 @@
                 initialScreen.classList.add('hidden');
                 gameContent.classList.remove('hidden');
                 gameControls.classList.remove('hidden');
+                addTeamBtn.disabled = false;
 
                 renderTeams();
                 stopTimer();
@@ -569,8 +575,35 @@
 
             // --- AI CONTENT GENERATION ---
             async function generateGameContent() {
-                // Using fallback data for static hosting
-                return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"},{"question":"What does 'NPS' measure?","answer":"Net Promoter Score / Customer Loyalty"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false},{"kpi":"Customer Satisfaction (CSAT) Score","relevant":true}]}]};
+                const prompt = `
+                    Create a team-building game called 'Client Clash' for Customer Success Managers and Project Managers.
+                    Generate content for three rounds: Family Feud, Rapid Fire, and KPI Identifier.
+                    The tone should be professional but fun. Questions should be relevant to client management, project lifecycles, common acronyms, and business metrics.
+
+                    Return the output ONLY as a valid JSON object with the following structure:
+                    {
+                      "familyFeud": [ { "question": "Name a common reason for project scope creep.", "answers": [ { "answer": "Unclear initial requirements", "points": 45 }, { "answer": "Client requests 'small' changes", "points": 30 }, { "answer": "Lack of a formal change control process", "points": 15 }, { "answer": "Poor communication", "points": 10 } ] } ],
+                      "rapidFire": [ { "question": "What does 'ARR' stand for in a SaaS business?", "answer": "Annual Recurring Revenue" }, { "question": "Name a popular project management software.", "answer": "Jira, Asana, or Trello" }, { "question": "What is a 'Gantt Chart' used for?", "answer": "Visualizing a project schedule" }, { "question": "What does 'QBR' stand for?", "answer": "Quarterly Business Review" } ],
+                      "kpiIdentifier": [ { "scenario": "A B2B SaaS client has a low product adoption rate for a new feature launched 3 months ago. Their goal is to increase user engagement and demonstrate ROI to their leadership.", "kpis": [ { "kpi": "Feature Adoption Rate", "relevant": true }, { "kpi": "Monthly Active Users (MAU)", "relevant": true }, { "kpi": "Customer Satisfaction Score (CSAT)", "relevant": true }, { "kpi": "Employee Turnover Rate", "relevant": false } ] } ]
+                    }`;
+                
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
+                const apiKey = ""; // The platform will inject the key here
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                try {
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                    const result = await response.json();
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    return JSON.parse(jsonText);
+                } catch (error) {
+                    console.error("AI content generation failed:", error);
+                    showMessage("Could not connect to AI. Using fallback questions.", true);
+                    // Fallback data
+                    return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
+                }
             }
         });
     </script>
