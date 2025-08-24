@@ -145,23 +145,43 @@
                 }
             }
 
+            async function refreshFamilyFeud() {
+                const refreshBtn = document.getElementById('refresh-feud-btn');
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                
+                try {
+                    const gameData = await generateGameContent(1);
+                    gameState.gameData = gameData;
+                    renderFamilyFeud();
+                } catch (error) {
+                     showMessage("Failed to refresh case.", true);
+                     refreshBtn.disabled = false;
+                     refreshBtn.textContent = 'Refresh Case';
+                }
+            }
+
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud;
                 let questionsHTML = roundData.questions.map((item, index) => `
                     <div class="p-4 bg-gray-800 rounded-lg">
                         <p class="font-bold text-lg">${item.q}</p>
                         <div class="flex items-center gap-4 mt-2">
-                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow">${item.a}</p>
+                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left">${item.a}</p>
                             <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
                         </div>
                     </div>
                 `).join('');
 
                 gameContent.innerHTML = `
-                    <div class="text-center"><h2 class="text-3xl font-bold mb-4">EMEA Feud Case Study</h2></div>
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
+                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
+                    </div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
                     <div class="space-y-4">${questionsHTML}</div>`;
                 
+                document.getElementById('refresh-feud-btn').addEventListener('click', refreshFamilyFeud);
                 document.querySelectorAll('.show-answer-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const targetId = e.currentTarget.dataset.target;
@@ -196,9 +216,6 @@
                     renderKPIIdentifier();
                 } catch (error) {
                      showMessage("Failed to refresh role.", true);
-                } finally {
-                    refreshBtn.disabled = false;
-                    refreshBtn.textContent = 'Refresh Role';
                 }
             }
 
