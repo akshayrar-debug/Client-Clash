@@ -589,9 +589,17 @@
                 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
-                const apiKey = ""; // The platform will inject the key here
+                
+                // IMPORTANT: Replace "YOUR_API_KEY_HERE" with your actual Google AI API key
+                const apiKey = "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4"; 
+                
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
+                if (apiKey === "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4") {
+                    showMessage("API Key not set. Using fallback questions.", true);
+                    return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
+                }
+
                 try {
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
