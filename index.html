@@ -308,36 +308,25 @@
 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
-                const apiKey = "YOUR_API_KEY_HERE"; 
+                const apiKey = "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
-                if (apiKey === "YOUR_API_KEY_HERE") {
-                    showMessage("API Key not set. Using fallback data.", true);
-                    return getFallbackData(round);
-                }
-
                 try {
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error("API Error Response:", errorBody);
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
                     const result = await response.json();
                     const jsonText = result.candidates[0].content.parts[0].text;
                     const parsedJson = JSON.parse(jsonText);
-                    console.log("Gemini API Response:", parsedJson); // Log the response
+                    console.log("Gemini API Response:", parsedJson);
                     return parsedJson;
                 } catch (error) {
                     console.error("AI content generation failed:", error);
-                    showMessage("Could not connect to AI. Using fallback data.", true);
-                    return getFallbackData(round);
-                }
-            }
-
-            function getFallbackData(round) {
-                if (round === 1) {
-                    return {"familyFeud": {"case": "A large retail bank in Spain is struggling with the adoption of its new CRM system. Customer data is often incomplete, leading to compliance risks and missed sales opportunities. Training has been ineffective, and support call volume is high.", "questions": [{"q": "How does incomplete CRM data impact your team's ability to meet sales targets?", "a": "It directly affects our cross-sell/upsell capabilities and forecasting accuracy."}, {"q": "What is the current cost associated with handling support calls related to the CRM?", "a": "It's a significant operational expense, and it pulls agents away from revenue-generating activities."}, {"q": "How are you ensuring GDPR compliance with the current state of your customer data?", "a": "It's a major concern and a manual effort, exposing us to potential fines."}, {"q": "What's the average time it takes for a new banker to become proficient in the CRM?", "a": "Too long, often over three months, which delays their productivity."}, {"q": "How do you currently guide your bankers through complex, multi-step processes within the CRM?", "a": "We rely on static PDF guides and peer support, which is inconsistent and inefficient."}]}};
-                } else if (round === 2) {
-                    return {"rapidFire":[{"question":"What does 'SLA' stand for?","answer":"Service Level Agreement"},{"question":"What is a 'key stakeholder'?","answer":"A person with interest in a project's outcome"},{"question":"What does 'GDPR' regulate?","answer":"Data protection and privacy"}]};
-                } else if (round === 3) {
-                    return {"kpiIdentifier":{"role":"VP of Customer Support","description":"The VP of Customer Support is focused on reducing support costs while increasing customer satisfaction. They are challenged by high agent turnover, long training times for new support software, and repetitive 'how-to' tickets that overwhelm their team. Their goal is to empower agents to resolve issues faster and enable customers to self-serve, thereby improving overall efficiency.","kpis":["Average Handle Time (AHT)","First Contact Resolution (FCR)","Agent Training Time & Cost","Support Ticket Deflection Rate","Customer Satisfaction (CSAT)","Agent Error Rate"]}};
+                    showMessage("Could not connect to AI. Please check the API key and network.", true);
+                    throw error; // Re-throw the error to be caught by the caller
                 }
             }
         });
