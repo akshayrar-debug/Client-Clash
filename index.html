@@ -93,6 +93,9 @@
                         <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
                         <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
                     </div>
+                    <div class="mt-6">
+                        <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg" disabled>Moderator View</button>
+                    </div>
                 </div>
             </div>
 
@@ -122,6 +125,16 @@
                     </div>
                 </div>
             </div>
+
+             <!-- Moderator Page -->
+            <div id="moderator-page" class="page">
+                 <div class="game-board p-6 rounded-2xl shadow-2xl">
+                    <div id="moderator-content"></div>
+                     <div class="text-center mt-6">
+                        <button id="mod-back-to-menu-btn" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg">Back to Menu</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -132,11 +145,14 @@
                 mainMenu: document.getElementById('main-menu-page'),
                 instructions: document.getElementById('instructions-page'),
                 game: document.getElementById('game-page'),
+                moderator: document.getElementById('moderator-page'),
             };
             const gameContent = document.getElementById('game-content');
+            const moderatorContent = document.getElementById('moderator-content');
             const loadingState = document.getElementById('loading-state-instructions');
             const messageArea = document.getElementById('message-area');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
+            const modBackToMenuBtn = document.getElementById('mod-back-to-menu-btn');
             const timerDisplay = document.getElementById('timer-display');
             const timerStartBtn = document.getElementById('timer-start-btn');
             const timerStopBtn = document.getElementById('timer-stop-btn');
@@ -146,6 +162,7 @@
             const instructionsTitle = document.getElementById('instructions-title');
             const instructionsText = document.getElementById('instructions-text');
             const startGameBtn = document.getElementById('start-game-btn');
+            const moderatorViewBtn = document.getElementById('moderator-view-btn');
 
             // --- GAME STATE ---
             let gameState = {
@@ -160,7 +177,6 @@
             };
             let timerInterval;
             let timeLeft = 60;
-            let roundTimerInterval;
 
             const INSTRUCTIONS = {
                 1: { title: "EMEA Feud", text: `
@@ -285,6 +301,7 @@
                     
                     renderGame();
                     showPage('game');
+                    moderatorViewBtn.disabled = false;
                 } catch (error) {
                     console.error("Error starting game:", error);
                     showMessage("Failed to start game. Please try again.", true);
@@ -297,6 +314,13 @@
 
             backToMenuBtn.addEventListener('click', () => {
                 showPage('mainMenu');
+            });
+            modBackToMenuBtn.addEventListener('click', () => {
+                showPage('mainMenu');
+            });
+            moderatorViewBtn.addEventListener('click', () => {
+                renderModeratorView();
+                showPage('moderator');
             });
 
             // --- TIMER LOGIC ---
@@ -353,26 +377,23 @@
                 const roundData = gameState.gameData.familyFeud;
                 let questionsHTML = roundData.questions.map((item, index) => `
                     <div class="p-4 bg-gray-800 rounded-lg">
+                        <p class="font-bold text-lg">${item.q}</p>
                         <div class="flex items-center gap-4 mt-2">
-                            <p id="feud-question-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left font-bold text-lg">${item.q}</p>
-                            <button data-target="feud-question-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Question</button>
+                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left">${item.a}</p>
+                            <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
                         </div>
                     </div>
                 `).join('');
 
                 gameContent.innerHTML = `
-                    <div class="flex justify-between items-center gap-4 mb-4">
+                    <div class="flex justify-center items-center gap-4 mb-4">
                         <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
-                        <div>
-                            <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
-                            <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm ml-2">Refresh Case</button>
-                        </div>
+                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
                     </div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
                     <div class="space-y-4">${questionsHTML}</div>`;
                 
                 document.getElementById('refresh-feud-btn').addEventListener('click', (e) => refreshContent(1, e.currentTarget));
-                document.getElementById('moderator-view-btn').addEventListener('click', openModeratorView);
                 document.querySelectorAll('.show-answer-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const targetId = e.currentTarget.dataset.target;
@@ -399,10 +420,7 @@
                 const isLastQuestion = gameState.questionIndex >= roundData.length - 1;
 
                 gameContent.innerHTML = `
-                    <div class="flex justify-between items-center gap-4 mb-6">
-                        <h2 class="text-3xl font-bold">Fastest Finger First</h2>
-                        <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
-                    </div>
+                    <div class="text-center mb-6"><h2 class="text-3xl font-bold">Fastest Finger First</h2></div>
                     <div class="space-y-4">${questionHTML}</div>
                      <div class="text-center mt-4">
                         <button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">
@@ -414,7 +432,7 @@
                     document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
                     e.currentTarget.style.display = 'none';
                 });
-                document.getElementById('moderator-view-btn').addEventListener('click', openModeratorView);
+
                 document.getElementById('next-fff-btn').addEventListener('click', (e) => {
                      if (isLastQuestion) {
                         refreshContent(2, e.currentTarget);
@@ -431,9 +449,8 @@
 
                 gameContent.innerHTML = `
                     <div class="text-center">
-                        <div class="flex justify-between items-center gap-4 mb-2">
+                        <div class="flex justify-center items-center gap-4 mb-2">
                             <h2 class="text-3xl font-bold">Whatfix Champion Persona</h2>
-                            <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
                         </div>
                         <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
                         <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
@@ -448,20 +465,13 @@
                     </div>`;
 
                 document.getElementById('next-kpi-btn').addEventListener('click', (e) => refreshContent(3, e.currentTarget));
-                document.getElementById('moderator-view-btn').addEventListener('click', openModeratorView);
                 document.getElementById('show-kpis-btn').addEventListener('click', (e) => {
                     document.getElementById('kpi-list').classList.remove('blur-md');
                     e.currentTarget.style.display = 'none';
                 });
             }
             
-            function openModeratorView() {
-                const newWindow = window.open('', '_blank');
-                newWindow.document.write(generateModeratorHTML());
-                newWindow.document.close();
-            }
-
-            function generateModeratorHTML() {
+            function renderModeratorView() {
                 const round = gameState.currentRound;
                 const data = gameState.gameData;
                 let content = '';
@@ -471,8 +481,9 @@
                     let questionsHTML = roundData.questions.map(item => `
                         <div class="p-4 bg-gray-800 rounded-lg text-left">
                             <p class="font-bold text-lg">${item.q}</p>
+                            <p class="text-green-400 mt-1">${item.a}</p>
                         </div>`).join('');
-                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Questions)</h2>
+                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Answers)</h2>
                                <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
                                <div class="space-y-4">${questionsHTML}</div>`;
                 } else if (round === 2) {
@@ -496,27 +507,7 @@
                                 <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul>
                                </div>`;
                 }
-
-                return `
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Moderator View</title>
-                        <script src="https://cdn.tailwindcss.com"></script>
-                        <style>
-                            body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
-                            .game-board { background-color: #1f2937; border: 1px solid #374151; }
-                            .kpi-list-item { background-color: #374151; padding: 0.75rem; border-radius: 0.5rem; font-weight: 500; }
-                        </style>
-                    </head>
-                    <body class="p-8">
-                        <div class="game-board p-6 rounded-2xl shadow-2xl">
-                            ${content}
-                        </div>
-                    </body>
-                    </html>
-                `;
+                moderatorContent.innerHTML = content;
             }
 
             function showMessage(message, isError = false) {
@@ -529,7 +520,7 @@
             async function generateGameContent(round) {
                 let prompt;
                 if (round === 1) {
-                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "..."}]}}`;
+                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
                 } else if (round === 2) {
                     prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
