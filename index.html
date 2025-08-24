@@ -84,6 +84,19 @@
                 <div class="game-board p-6 rounded-2xl shadow-2xl text-center">
                     <h2 class="text-3xl font-bold mb-6">Choose a Game</h2>
                     <div id="message-area" class="my-4 h-6 font-semibold"></div>
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
+                        <button data-round="1" class="navigate-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">EMEA Feud</button>
+                        <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
+                        <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions Page -->
+            <div id="instructions-page" class="page">
+                <div class="game-board p-6 rounded-2xl shadow-2xl text-center">
+                    <h2 id="instructions-title" class="text-3xl font-bold mb-4"></h2>
+                    <p id="instructions-text" class="text-lg text-gray-300 max-w-3xl mx-auto mb-6"></p>
                     <div id="loading-state" class="hidden my-4">
                         <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -91,11 +104,7 @@
                         </svg>
                         <p class="mt-2 text-lg text-gray-300">AI is generating your game... Please wait.</p>
                     </div>
-                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
-                        <button data-round="1" class="navigate-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">EMEA Feud</button>
-                        <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
-                        <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
-                    </div>
+                    <button id="start-game-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Start Game</button>
                 </div>
             </div>
 
@@ -117,6 +126,7 @@
             // --- DOM ELEMENTS ---
             const pages = {
                 mainMenu: document.getElementById('main-menu-page'),
+                instructions: document.getElementById('instructions-page'),
                 game: document.getElementById('game-page'),
             };
             const gameContent = document.getElementById('game-content');
@@ -129,6 +139,9 @@
             const timerResetBtn = document.getElementById('timer-reset-btn');
             const teamsContainer = document.getElementById('teams-container');
             const addTeamBtn = document.getElementById('add-team-btn');
+            const instructionsTitle = document.getElementById('instructions-title');
+            const instructionsText = document.getElementById('instructions-text');
+            const startGameBtn = document.getElementById('start-game-btn');
 
             // --- GAME STATE ---
             let gameState = {
@@ -142,6 +155,12 @@
             };
             let timerInterval;
             let timeLeft = 60;
+
+            const INSTRUCTIONS = {
+                1: { title: "EMEA Feud", text: "A case study of a potential EMEA client will be presented. Your goal is to identify the client's key pain points by reviewing a series of 'pure signal' questions and their ideal answers." },
+                2: { title: "Fastest Finger First", text: "Test your knowledge of key CSM and PM metrics. A scenario will be presented, and you'll be asked to either define or calculate a specific metric. Hover over the answer to reveal it." },
+                3: { title: "KPI Identifier", text: "Analyze a randomly generated Whatfix sponsor or champion persona. Review their role, challenges, and the key performance indicators (KPIs) that Whatfix can impact for them." }
+            };
 
             // --- SCOREBOARD LOGIC ---
             function renderScoreboard() {
@@ -209,27 +228,36 @@
             }
 
             document.querySelectorAll('.navigate-btn').forEach(button => {
-                button.addEventListener('click', async (e) => {
+                button.addEventListener('click', (e) => {
                     const round = parseInt(e.currentTarget.dataset.round);
-                    loadingState.classList.remove('hidden');
-                    
-                    try {
-                        const gameData = await generateGameContent(round);
-                        if (!gameData) throw new Error("AI failed to generate game data.");
-                        
-                        gameState.gameData = gameData;
-                        gameState.currentRound = round;
-                        gameState.questionIndex = 0;
-                        
-                        renderGame();
-                        showPage('game');
-                    } catch (error) {
-                        console.error("Error starting game:", error);
-                        showMessage("Failed to start game. Please try again.", true);
-                    } finally {
-                        loadingState.classList.add('hidden');
-                    }
+                    gameState.currentRound = round;
+                    instructionsTitle.textContent = INSTRUCTIONS[round].title;
+                    instructionsText.textContent = INSTRUCTIONS[round].text;
+                    showPage('instructions');
                 });
+            });
+
+            startGameBtn.addEventListener('click', async () => {
+                loadingState.classList.remove('hidden');
+                startGameBtn.style.display = 'none';
+
+                try {
+                    const gameData = await generateGameContent(gameState.currentRound);
+                    if (!gameData) throw new Error("AI failed to generate game data.");
+                    
+                    gameState.gameData = gameData;
+                    gameState.questionIndex = 0;
+                    
+                    renderGame();
+                    showPage('game');
+                } catch (error) {
+                    console.error("Error starting game:", error);
+                    showMessage("Failed to start game. Please try again.", true);
+                    showPage('mainMenu'); // Go back to menu on error
+                } finally {
+                    loadingState.classList.add('hidden');
+                    startGameBtn.style.display = 'block';
+                }
             });
 
             backToMenuBtn.addEventListener('click', () => {
