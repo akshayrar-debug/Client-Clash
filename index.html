@@ -6,6 +6,7 @@
     <title>Client Clash</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -27,30 +28,9 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .answer-card, .kpi-card {
-            transition: all 0.3s ease;
-            transform-style: preserve-3d;
-        }
-        .answer-card.flipped, .kpi-card.flipped {
-            transform: rotateY(180deg);
-        }
-        .card-face {
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-        }
-        .card-back {
-            transform: rotateY(180deg);
-        }
-        .scoreboard-team {
-            transition: all 0.3s ease;
-        }
-        .scoreboard-team.active {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.7); /* blue-500 */
-        }
-        #timer-display {
-            font-weight: 900;
-            font-size: 2.5rem; /* Adjusted size */
+        .kpi-box {
+            background-color: #111827;
+            border-top: 2px solid #374151;
         }
         .modal {
             background-color: rgba(0,0,0,0.7);
@@ -58,105 +38,45 @@
         .modal-content {
             background-color: #1f2937; /* bg-gray-800 */
         }
-        .team-name-input {
-            background-color: #374151;
-            border: 1px solid #4b5563;
-            color: white;
-            padding: 2px 4px;
-            border-radius: 4px;
-            width: 120px;
-        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
 
-    <!-- Independent Timer -->
-    <div id="timer-container" class="absolute top-4 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4">
-        <div id="timer-display" class="text-5xl text-red-500">60</div>
-        <div class="flex flex-col space-y-2">
-            <button id="timer-start-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Start</button>
-            <button id="timer-stop-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-1 px-3 rounded-md text-sm">Stop</button>
-            <button id="timer-reset-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md text-sm">Reset</button>
-        </div>
-    </div>
-
     <div id="app" class="w-full max-w-7xl mx-auto">
         <!-- Header -->
-        <header class="text-center mb-6 pt-16">
+        <header class="text-center mb-6 pt-4">
             <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Client Clash</h1>
             <p class="text-gray-400 mt-2">The Ultimate Game for CS and PM Professionals</p>
         </header>
 
         <!-- Main Content -->
-        <main id="game-container" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Left Panel (Game Board) -->
-            <div id="game-board" class="lg:col-span-3 game-board p-6 rounded-2xl shadow-2xl">
+        <main id="game-container" class="grid grid-cols-1">
+            <!-- Game Board -->
+            <div id="game-board" class="game-board p-6 rounded-2xl shadow-2xl">
                 <!-- Initial State -->
                 <div id="initial-screen" class="text-center flex flex-col items-center justify-center h-full">
-                    <h2 class="text-3xl font-bold mb-4">Choose a Round to Begin</h2>
+                    <h2 class="text-3xl font-bold mb-4">Choose a Persona to Analyze</h2>
                     <div id="message-area" class="my-4 h-6 font-semibold"></div>
                     <div id="loading-state" class="hidden my-4">
                         <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <p class="mt-2 text-lg text-gray-300">Generating your custom game... Please wait.</p>
+                        <p class="mt-2 text-lg text-gray-300">AI is analyzing the persona... Please wait.</p>
                     </div>
                     <div id="start-options" class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                        <button data-round="1" class="start-round-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Family Feud</button>
-                        <button data-round="2" class="start-round-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Rapid Fire</button>
-                        <button data-round="3" class="start-round-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
+                        <button data-persona="Head of Sales Enablement" class="start-round-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Sales Enablement</button>
+                        <button data-persona="VP of Customer Success" class="start-round-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Customer Success</button>
+                        <button data-persona="Chief Information Officer" class="start-round-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">IT / CIO</button>
                     </div>
                 </div>
 
                 <!-- Game Content (Dynamically populated) -->
                 <div id="game-content" class="hidden"></div>
             </div>
-
-            <!-- Right Panel (Scoreboard & Controls) -->
-            <aside id="controls-and-scores" class="space-y-6">
-                <!-- Scoreboard -->
-                <div class="game-board p-6 rounded-2xl shadow-2xl">
-                    <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
-                        <h2 class="text-2xl font-bold">Scoreboard</h2>
-                        <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm" disabled>+</button>
-                    </div>
-                    <div id="scoreboard" class="space-y-4">
-                        <!-- Teams will be dynamically added here -->
-                    </div>
-                </div>
-
-                <!-- Game Controls -->
-                <div id="game-controls" class="game-board p-6 rounded-2xl shadow-2xl hidden">
-                    <h2 class="text-2xl font-bold mb-4">Controls</h2>
-                    <div class="space-y-3">
-                         <button id="instructions-btn" class="btn w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Instructions</button>
-                         <button id="reset-game-btn" class="btn w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg mt-4">Back to Menu</button>
-                    </div>
-                </div>
-            </aside>
         </main>
     </div>
 
-    <!-- Instructions Modal -->
-    <div id="instructions-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center hidden">
-        <div class="modal-content w-full max-w-3xl p-8 rounded-2xl shadow-2xl border border-gray-700 relative">
-            <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
-            <h2 class="text-3xl font-bold mb-4 text-center">Game Instructions</h2>
-            <div id="instructions-content" class="text-gray-300 space-y-4"></div>
-        </div>
-    </div>
-    
-    <!-- Winner Modal -->
-    <div id="winner-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center hidden">
-        <div class="modal-content w-full max-w-md p-8 rounded-2xl shadow-2xl border border-yellow-400 text-center">
-             <h2 class="text-4xl font-bold mb-4 text-yellow-300">Game Over!</h2>
-             <p id="winner-text" class="text-2xl mb-6"></p>
-             <button id="play-again-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Play Again</button>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <script type="module">
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM ELEMENTS ---
@@ -165,70 +85,28 @@
             const loadingState = document.getElementById('loading-state');
             const startOptions = document.getElementById('start-options');
             const messageArea = document.getElementById('message-area');
-            const scoreboardContainer = document.getElementById('scoreboard');
-            const addTeamBtn = document.getElementById('add-team-btn');
-            const gameControls = document.getElementById('game-controls');
-            const resetGameBtn = document.getElementById('reset-game-btn');
-            const instructionsBtn = document.getElementById('instructions-btn');
-            const instructionsModal = document.getElementById('instructions-modal');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-            const instructionsContent = document.getElementById('instructions-content');
-            const winnerModal = document.getElementById('winner-modal');
-            const winnerText = document.getElementById('winner-text');
-            const playAgainBtn = document.getElementById('play-again-btn');
-            
-            // Timer elements
-            const timerDisplay = document.getElementById('timer-display');
-            const timerStartBtn = document.getElementById('timer-start-btn');
-            const timerStopBtn = document.getElementById('timer-stop-btn');
-            const timerResetBtn = document.getElementById('timer-reset-btn');
 
             // --- GAME STATE ---
             let gameState = {};
-            let timerInterval;
-            let timeLeft = 60;
 
             // --- SOUNDS ---
             let sounds = {};
             function initializeSounds() {
                 sounds = {
-                    correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
-                    wrong: new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination(),
-                    timerTick: new Tone.MembraneSynth().toDestination(),
-                    roundEnd: new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
+                    success: new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
                 };
             }
-
-            // --- INSTRUCTIONS TEXT ---
-            const INSTRUCTIONS = {
-                "1": `<h3 class="text-xl font-bold text-blue-400">Round 1: Family Feud</h3><p>One team tries to guess the most popular answers to a survey question. Answers are ranked and have different point values. The team gets three strikes for wrong answers before the other team has a chance to steal the points.</p>`,
-                "2": `<h3 class="text-xl font-bold text-blue-400">Round 2: Rapid Fire</h3><p>Each team gets 60 seconds to answer as many questions as possible. Questions are asked one after another. A correct answer earns 10 points. The timer is relentless!</p>`,
-                "3": `<h3 class="text-xl font-bold text-blue-400">Round 3: KPI Identifier</h3><p>A client scenario is presented. Teams must identify the most relevant Key Performance Indicators (KPIs) from a given list. Each correct KPI earns 20 points, but each incorrect selection loses 10 points!</p>`
-            };
 
             // --- EVENT LISTENERS ---
             document.querySelectorAll('.start-round-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    const round = parseInt(e.currentTarget.dataset.round);
-                    startNewRound(round);
+                    const persona = e.currentTarget.dataset.persona;
+                    startNewAnalysis(persona);
                 });
             });
-            addTeamBtn.addEventListener('click', addTeam);
-            resetGameBtn.addEventListener('click', resetGame);
-            instructionsBtn.addEventListener('click', showInstructions);
-            closeModalBtn.addEventListener('click', () => instructionsModal.classList.add('hidden'));
-            playAgainBtn.addEventListener('click', () => {
-                winnerModal.classList.add('hidden');
-                resetGame();
-            });
             
-            // Timer Listeners
-            timerStartBtn.addEventListener('click', startTimer);
-            timerStopBtn.addEventListener('click', stopTimer);
-            timerResetBtn.addEventListener('click', resetTimer);
-
             // --- GAME FLOW FUNCTIONS ---
-            async function startNewRound(round) {
+            async function startNewAnalysis(persona) {
                 loadingState.classList.remove('hidden');
                 startOptions.classList.add('hidden');
                 if (Object.keys(sounds).length === 0) {
@@ -237,316 +115,81 @@
                 }
 
                 try {
-                    // Only generate game data if it doesn't exist yet
-                    if (!gameState.gameData) {
-                        const gameData = await generateGameContent();
-                        if (!gameData) throw new Error("AI failed to generate game data.");
-                        gameState.gameData = gameData;
-                        gameState.teams = [
-                            { name: 'Team 1', score: 0 },
-                            { name: 'Team 2', score: 0 }
-                        ];
-                    }
+                    const personaData = await fetchSponsorInfo(persona);
+                    if (!personaData) throw new Error("AI failed to generate persona data.");
                     
-                    gameState.currentRound = round;
-                    gameState.activeTeamIndex = 0;
-                    gameState.roundState = {};
-                    
-                    renderGame();
+                    gameState.personaData = personaData;
+                    renderPersonaScreen();
+                    sounds.success.triggerAttackRelease("C5", "8n");
 
                 } catch (error) {
-                    console.error("Error creating new game:", error);
-                    showMessage("Failed to start game. Please try again.", true);
-                    loadingState.classList.add('hidden');
-                    startOptions.classList.remove('hidden');
+                    console.error("Error starting new analysis:", error);
+                    showMessage("Failed to analyze persona. Please try again.", true);
+                    showInitialScreen();
                 }
             }
             
             function showInitialScreen() {
                 initialScreen.classList.remove('hidden');
                 gameContent.classList.add('hidden');
-                gameControls.classList.add('hidden');
                 loadingState.classList.add('hidden');
                 startOptions.classList.remove('hidden');
-                addTeamBtn.disabled = true;
-            }
-
-            function resetGame() {
-                // Keep game data and teams, just go back to menu
-                gameState.currentRound = 0;
-                showInitialScreen();
-            }
-            
-            function endGame() {
-                if (!gameState.teams || gameState.teams.length === 0) return;
-                const winner = gameState.teams.reduce((prev, current) => (prev.score > current.score) ? prev : current);
-                winnerText.textContent = `${winner.name} is the winner!`;
-                winnerModal.classList.remove('hidden');
             }
 
             // --- RENDERING FUNCTIONS ---
-            function renderGame() {
-                if (!gameState || !gameState.gameData) {
+            function renderPersonaScreen() {
+                if (!gameState || !gameState.personaData) {
                     showInitialScreen();
                     return;
                 }
                 
                 initialScreen.classList.add('hidden');
+                loadingState.classList.add('hidden');
                 gameContent.classList.remove('hidden');
-                gameControls.classList.remove('hidden');
-                addTeamBtn.disabled = false;
 
-                renderTeams();
+                const { role, description, kpis } = gameState.personaData;
 
-                switch (gameState.currentRound) {
-                    case 1:
-                        renderFamilyFeud();
-                        break;
-                    case 2:
-                        renderRapidFire();
-                        break;
-                    case 3:
-                        renderKPIIdentifier();
-                        break;
-                }
-            }
-
-            function renderTeams() {
-                scoreboardContainer.innerHTML = '';
-                gameState.teams.forEach((team, index) => {
-                    const teamDiv = document.createElement('div');
-                    teamDiv.className = 'scoreboard-team p-4 bg-gray-700 rounded-lg flex justify-between items-center';
-                    if (index === gameState.activeTeamIndex) {
-                        teamDiv.classList.add('active', 'border-blue-500', 'border-2');
-                    }
-
-                    const teamNameSpan = document.createElement('span');
-                    teamNameSpan.className = 'font-bold text-lg cursor-pointer';
-                    teamNameSpan.textContent = team.name;
-                    
-                    teamNameSpan.addEventListener('click', () => {
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = team.name;
-                        input.className = 'team-name-input font-bold text-lg';
-                        teamNameSpan.replaceWith(input);
-                        input.focus();
-
-                        const saveName = () => {
-                            if (input.value.trim()) {
-                                renameTeam(index, input.value.trim());
-                            } else {
-                                renderGame();
-                            }
-                        };
-                        
-                        input.addEventListener('blur', saveName);
-                        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
-                    });
-
-                    const teamScoreSpan = document.createElement('span');
-                    teamScoreSpan.className = 'text-2xl font-black text-yellow-300';
-                    teamScoreSpan.textContent = team.score;
-
-                    teamDiv.appendChild(teamNameSpan);
-                    teamDiv.appendChild(teamScoreSpan);
-                    scoreboardContainer.appendChild(teamDiv);
-                });
-            }
-
-            function renderFamilyFeud() {
-                const roundData = gameState.gameData.familyFeud[0];
-                if (!gameState.roundState.revealed) gameState.roundState = { revealed: [], strikes: 0, lastPoints: 0 };
-
-                let answerHTML = roundData.answers.map((ans, index) => {
-                    const isRevealed = gameState.roundState.revealed.includes(index);
-                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}"><div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div><div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div></div>`;
-                }).join('');
-                
-                let awardButtonsHTML = gameState.teams.map((team, index) => `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`).join('');
+                const kpiListHTML = kpis.map(kpi => `<li class="bg-gray-700 p-3 rounded-lg">${kpi}</li>`).join('');
 
                 gameContent.innerHTML = `
-                    <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>
-                    <div class="flex justify-between items-center mt-8">
-                         <div id="award-buttons-container" class="flex flex-wrap gap-2">${awardButtonsHTML}</div>
-                        <div class="flex items-center space-x-4">
-                            <span class="text-xl font-bold text-red-500">Strikes:</span>
-                            <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
-                            <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
+                    <div class="flex flex-col h-full">
+                        <div class="flex-grow p-4">
+                            <h2 class="text-4xl font-bold text-center text-yellow-300 mb-4">${role}</h2>
+                            <p class="text-lg text-gray-300 text-center max-w-4xl mx-auto">${description}</p>
                         </div>
-                         <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Team</button></div>
-                    </div>`;
-                
-                document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    if (!gameState.roundState.revealed.includes(index)) {
-                        sounds.correct.triggerAttackRelease("C4", "8n");
-                        gameState.roundState.lastPoints = roundData.answers[index].points;
-                        gameState.roundState.revealed.push(index);
-                        renderGame();
-                    }
-                }));
-                
-                document.getElementById('strike-btn').addEventListener('click', () => {
-                    if (gameState.roundState.strikes < 3) {
-                        sounds.wrong.triggerAttackRelease("C3", "8n");
-                        gameState.roundState.strikes++;
-                        if (gameState.roundState.strikes >= 3) switchActiveTeam();
-                        else renderGame();
-                    }
-                });
-
-                document.getElementById('switch-team-btn').addEventListener('click', switchActiveTeam);
-                
-                document.querySelectorAll('#award-buttons-container button').forEach(btn => btn.addEventListener('click', (e) => {
-                    const teamIndex = parseInt(e.currentTarget.dataset.teamIndex);
-                    if (gameState.roundState.lastPoints > 0) {
-                        awardPoints(teamIndex, gameState.roundState.lastPoints);
-                        gameState.roundState.lastPoints = 0;
-                    }
-                }));
-            }
-            
-            function renderRapidFire() {
-                const activeTeam = gameState.teams[gameState.activeTeamIndex];
-                if (!activeTeam) return;
-                if (gameState.roundState.questionIndex === undefined) gameState.roundState.questionIndex = 0;
-
-                const questions = gameState.gameData.rapidFire;
-                const currentQuestion = questions[gameState.roundState.questionIndex];
-
-                if (!currentQuestion) {
-                    gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or end the round.</p>`;
-                    return;
-                }
-
-                gameContent.innerHTML = `
-                    <div class="text-center flex flex-col items-center justify-center h-full">
-                        <p class="text-xl text-gray-400 mb-2">${activeTeam.name}'s Turn</p>
-                        <h2 class="text-4xl font-bold mb-8">${currentQuestion.question}</h2>
-                        <div class="mt-8 flex space-x-4">
-                            <button id="correct-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Correct</button>
-                            <button id="pass-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg text-lg">Pass / Incorrect</button>
-                            <button id="switch-team-rf-btn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Switch Team</button>
+                        <div class="kpi-box mt-6 p-6 rounded-b-2xl">
+                            <h3 class="text-2xl font-bold text-center mb-4">Key Performance Indicators (KPIs)</h3>
+                            <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
+                                ${kpiListHTML}
+                            </ul>
                         </div>
-                    </div>`;
-                
-                document.getElementById('correct-btn').addEventListener('click', () => {
-                    sounds.correct.triggerAttackRelease("C5", "8n");
-                    awardPoints(gameState.activeTeamIndex, 10);
-                    nextRapidFireQuestion();
-                });
-                document.getElementById('pass-btn').addEventListener('click', () => {
-                     sounds.wrong.triggerAttackRelease("A2", "8n");
-                    nextRapidFireQuestion();
-                });
-                document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
-                    gameState.roundState.questionIndex = 0;
-                    switchActiveTeam();
-                });
-            }
-            
-            function nextRapidFireQuestion() {
-                gameState.roundState.questionIndex++;
-                renderGame();
-            }
-
-            function renderKPIIdentifier() {
-                const activeTeam = gameState.teams[gameState.activeTeamIndex];
-                if (!activeTeam) return;
-                if (!gameState.roundState.selected) gameState.roundState.selected = [];
-
-                const roundData = gameState.gameData.kpiIdentifier[0];
-
-                let kpiHTML = roundData.kpis.map((kpi, index) => {
-                    const isSelected = gameState.roundState.selected.includes(index);
-                    return `<div class="kpi-card p-4 rounded-lg cursor-pointer border-2 ${isSelected ? 'bg-blue-600 border-blue-400' : 'bg-gray-700 border-gray-600 hover:border-blue-500'}" data-index="${index}"><p class="text-lg font-semibold">${kpi.kpi}</p></div>`;
-                }).join('');
-
-                gameContent.innerHTML = `
-                    <div class="text-center">
-                        <h2 class="text-2xl font-bold mb-2">Client Scenario:</h2>
-                        <p class="text-lg text-gray-300 mb-6 max-w-3xl mx-auto">${roundData.scenario}</p>
+                        <div class="text-center mt-6">
+                            <button id="back-to-menu-btn" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg">Back to Menu</button>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">${kpiHTML}</div>
-                    <div class="text-center mt-8"><button id="submit-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Submit KPIs for ${activeTeam.name}</button></div>`;
+                `;
 
-                document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    const selected = gameState.roundState.selected;
-                    if (selected.includes(index)) {
-                        gameState.roundState.selected = selected.filter(i => i !== index);
-                    } else {
-                        gameState.roundState.selected.push(index);
-                    }
-                    renderGame();
-                }));
-                
-                document.getElementById('submit-kpis-btn').addEventListener('click', () => {
-                    let scoreChange = 0;
-                    const selectedIndexes = gameState.roundState.selected;
-                    const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
-                    
-                    selectedIndexes.forEach(selectedIndex => { scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10; });
-                    
-                    awardPoints(gameState.activeTeamIndex, scoreChange);
-                    gameState.roundState.selected = [];
-                    switchActiveTeam();
-                });
+                document.getElementById('back-to-menu-btn').addEventListener('click', showInitialScreen);
             }
 
-            // --- HELPER & UTILITY FUNCTIONS ---
-            function addTeam() {
-                if (gameState.teams) {
-                    gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
-                    renderGame();
-                }
-            }
-            function renameTeam(index, newName) { gameState.teams[index].name = newName; renderGame(); }
-            function awardPoints(teamIndex, points) { gameState.teams[teamIndex].score += points; renderGame(); }
-            function switchActiveTeam() { gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length; renderGame(); }
-            function showInstructions() { instructionsContent.innerHTML = INSTRUCTIONS[gameState.currentRound]; instructionsModal.classList.remove('hidden'); }
             function showMessage(message, isError = false) {
                 messageArea.textContent = message;
                 messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
                 setTimeout(() => { messageArea.textContent = ''; }, 4000);
             }
 
-            // --- TIMER FUNCTIONS ---
-            function startTimer() {
-                clearInterval(timerInterval); // Ensure no multiple intervals
-                timerInterval = setInterval(() => {
-                    timeLeft--;
-                    timerDisplay.textContent = timeLeft;
-                    if (timeLeft <= 10 && timeLeft > 0) {
-                        sounds.timerTick.triggerAttackRelease("C2", "8n", Tone.now());
-                        timerDisplay.classList.add('animate-ping');
-                    } else {
-                         timerDisplay.classList.remove('animate-ping');
-                    }
-                    if (timeLeft <= 0) {
-                        stopTimer();
-                        sounds.roundEnd.triggerAttackRelease("C2", "2n");
-                    }
-                }, 1000);
-            }
-            function stopTimer() { clearInterval(timerInterval); timerDisplay.classList.remove('animate-ping'); }
-            function resetTimer() { stopTimer(); timeLeft = 60; timerDisplay.textContent = timeLeft; }
-
             // --- AI CONTENT GENERATION ---
-            async function generateGameContent() {
+            async function fetchSponsorInfo(persona) {
                 const prompt = `
-                    Create a team-building game called 'Client Clash' for Customer Success Managers and Project Managers.
-                    Generate content for three rounds: Family Feud, Rapid Fire, and KPI Identifier.
-                    The tone should be professional but fun. Questions should be relevant to client management, project lifecycles, common acronyms, and business metrics.
+                    You are an expert in digital adoption and B2B SaaS sales, specializing in the value proposition of Whatfix.
+                    A potential enterprise client is being evaluated. Your task is to analyze the key sponsor or champion role of "${persona}".
+                    
+                    1.  **Role**: State the role title clearly.
+                    2.  **Description**: Provide a concise, one-paragraph description of this person's primary responsibilities, challenges, and goals within their organization, specifically focusing on aspects where a Digital Adoption Platform like Whatfix would be relevant.
+                    3.  **KPIs**: List 5-7 of their most important Key Performance Indicators (KPIs) that Whatfix could directly and positively impact.
 
-                    Return the output ONLY as a valid JSON object with the following structure:
-                    {
-                      "familyFeud": [ { "question": "Name a common reason for project scope creep.", "answers": [ { "answer": "Unclear initial requirements", "points": 45 }, { "answer": "Client requests 'small' changes", "points": 30 }, { "answer": "Lack of a formal change control process", "points": 15 }, { "answer": "Poor communication", "points": 10 } ] } ],
-                      "rapidFire": [ { "question": "What does 'ARR' stand for in a SaaS business?", "answer": "Annual Recurring Revenue" }, { "question": "Name a popular project management software.", "answer": "Jira, Asana, or Trello" }, { "question": "What is a 'Gantt Chart' used for?", "answer": "Visualizing a project schedule" }, { "question": "What does 'QBR' stand for?", "answer": "Quarterly Business Review" } ],
-                      "kpiIdentifier": [ { "scenario": "A B2B SaaS client has a low product adoption rate for a new feature launched 3 months ago. Their goal is to increase user engagement and demonstrate ROI to their leadership.", "kpis": [ { "kpi": "Feature Adoption Rate", "relevant": true }, { "kpi": "Monthly Active Users (MAU)", "relevant": true }, { "kpi": "Customer Satisfaction Score (CSAT)", "relevant": true }, { "kpi": "Employee Turnover Rate", "relevant": false } ] } ]
-                    }`;
+                    Return the response ONLY as a valid JSON object with the keys "role", "description", and "kpis" (which must be an array of strings).
+                `;
                 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
@@ -554,8 +197,19 @@
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
                 if (apiKey === "YOUR_API_KEY_HERE") {
-                    showMessage("API Key not set. Using fallback questions.", true);
-                    return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
+                    showMessage("API Key not set. Using fallback data.", true);
+                    return {
+                        "role": "Head of Sales Enablement",
+                        "description": "The Head of Sales Enablement is responsible for equipping the sales team with the tools, content, and training needed to succeed. Their primary challenge is ensuring consistent adoption of sales software (like Salesforce) and methodologies across a distributed team, reducing ramp-up time for new hires, and ensuring that the sales process is followed correctly to maximize revenue opportunities. They are constantly looking for ways to improve sales productivity and effectiveness.",
+                        "kpis": [
+                            "Time to First Deal for New Sales Hires",
+                            "Salesforce Adoption & Data Entry Accuracy",
+                            "Quota Attainment Rate",
+                            "Sales Cycle Length",
+                            "Lead Conversion Rate",
+                            "Content Utilization Rate by Sales Team"
+                        ]
+                    };
                 }
 
                 try {
@@ -566,11 +220,22 @@
                     return JSON.parse(jsonText);
                 } catch (error) {
                     console.error("AI content generation failed:", error);
-                    showMessage("Could not connect to AI. Using fallback questions.", true);
-                    return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
+                    showMessage("Could not connect to AI. Using fallback data.", true);
+                    return {
+                        "role": "VP of Customer Success",
+                        "description": "The VP of Customer Success is tasked with ensuring clients receive maximum value from the product, leading to high retention and expansion revenue. They face challenges with user onboarding, feature adoption, and scaling support efforts effectively. Their goal is to create a seamless customer journey, reduce churn, and identify upsell opportunities by demonstrating clear ROI.",
+                        "kpis": [
+                            "Net Revenue Retention (NRR)",
+                            "Customer Churn Rate",
+                            "Product/Feature Adoption Rate",
+                            "Time to Value (TTV) for New Customers",
+                            "Customer Satisfaction Score (CSAT/NPS)",
+                            "Expansion MRR"
+                        ]
+                    };
                 }
             }
         });
     </script>
 </body>
-</ht
+</html>
