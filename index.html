@@ -39,6 +39,20 @@
             border-radius: 0.5rem;
             font-weight: 500;
         }
+        .answer-card {
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+        .answer-card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face, .card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
@@ -115,7 +129,6 @@
                     loadingState.classList.remove('hidden');
                     
                     try {
-                        // Always fetch fresh data for the selected round
                         const gameData = await generateGameContent(round);
                         if (!gameData) throw new Error("AI failed to generate game data.");
                         
@@ -149,11 +162,11 @@
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud[0];
                 let answerHTML = roundData.answers.map((ans, index) => {
-                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer bg-blue-900 border-2 border-blue-500" data-index="${index}">
-                                <div class="card-face w-full h-full flex items-center justify-center">
+                    return `<div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer bg-blue-900 border-2 border-blue-500 relative" data-index="${index}">
+                                <div class="card-face w-full h-full flex items-center justify-center absolute">
                                     <span class="text-3xl font-bold text-blue-300">${index + 1}</span>
                                 </div>
-                                <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg" style="display: none;">
+                                <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg absolute">
                                     <span class="text-lg font-semibold">${ans.answer}</span>
                                     <span class="text-2xl font-bold text-yellow-300">${ans.points}</span>
                                 </div>
@@ -165,17 +178,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>`;
                 
                 document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
-                    const cardElement = e.currentTarget;
-                    cardElement.classList.toggle('flipped');
-                    const face = cardElement.querySelector('.card-face');
-                    const back = cardElement.querySelector('.card-back');
-                    if (cardElement.classList.contains('flipped')) {
-                        face.style.display = 'none';
-                        back.style.display = 'flex';
-                    } else {
-                        face.style.display = 'flex';
-                        back.style.display = 'none';
-                    }
+                    e.currentTarget.classList.toggle('flipped');
                 }));
             }
 
@@ -184,7 +187,7 @@
                 let questionsHTML = roundData.map(item => `
                     <div class="p-4 bg-gray-800 rounded-lg">
                         <p class="font-bold text-lg">${item.question}</p>
-                        <p class="text-green-400">${item.answer}</p>
+                        <p class="text-green-400 blur-sm hover:blur-none transition-all cursor-pointer">${item.answer}</p>
                     </div>
                 `).join('');
 
@@ -193,18 +196,47 @@
                     <div class="space-y-4">${questionsHTML}</div>`;
             }
 
+            async function refreshKPIs() {
+                const refreshBtn = document.getElementById('refresh-kpi-btn');
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                
+                try {
+                    const gameData = await generateGameContent(3);
+                    gameState.gameData = gameData;
+                    renderKPIIdentifier();
+                } catch (error) {
+                     showMessage("Failed to refresh role.", true);
+                } finally {
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = 'Refresh Role';
+                }
+            }
+
             function renderKPIIdentifier() {
                 const roundData = gameState.gameData.kpiIdentifier;
                 const kpiListHTML = roundData.kpis.map(kpi => `<li class="kpi-list-item">${kpi}</li>`).join('');
 
                 gameContent.innerHTML = `
                     <div class="text-center">
-                        <h2 class="text-3xl font-bold mb-2">Whatfix Champion Persona</h2>
+                        <div class="flex justify-center items-center gap-4 mb-2">
+                            <h2 class="text-3xl font-bold">Whatfix Champion Persona</h2>
+                            <button id="refresh-kpi-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Role</button>
+                        </div>
                         <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
                         <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
-                        <h4 class="text-2xl font-bold mb-4">Potential KPIs</h4>
-                        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul>
+                        <div class="flex justify-center items-center gap-4 mb-4">
+                            <h4 class="text-2xl font-bold">Potential KPIs</h4>
+                            <button id="show-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show KPIs</button>
+                        </div>
+                        <ul id="kpi-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center blur-md transition-all">${kpiListHTML}</ul>
                     </div>`;
+
+                document.getElementById('refresh-kpi-btn').addEventListener('click', refreshKPIs);
+                document.getElementById('show-kpis-btn').addEventListener('click', (e) => {
+                    document.getElementById('kpi-list').classList.remove('blur-md');
+                    e.currentTarget.style.display = 'none';
+                });
             }
 
             function showMessage(message, isError = false) {
@@ -221,7 +253,7 @@
                 } else if (round === 2) {
                     prompt = `Generate 5 'Rapid Fire' questions and answers for Customer Success and Project Managers. The tone should be professional but fun. Return ONLY a valid JSON object like this: {"rapidFire": [{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]}`;
                 } else if (round === 3) {
-                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client (e.g., Head of L&D, VP of Sales Ops, CIO). Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
