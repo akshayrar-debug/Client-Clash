@@ -303,7 +303,7 @@
                 } else if (round === 2) {
                     prompt = `Generate 5 'Rapid Fire' questions and answers for Customer Success and Project Managers. The tone should be professional but fun. Return ONLY a valid JSON object like this: {"rapidFire": [{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]}`;
                 } else if (round === 3) {
-                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client (e.g., Head of L&D, VP of Sales Ops, CIO). Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
