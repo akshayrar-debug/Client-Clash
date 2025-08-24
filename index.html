@@ -86,7 +86,7 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <p class="mt-2 text-lg text-gray-300">AI is generating your custom game... Please wait.</p>
+                        <p class="mt-2 text-lg text-gray-300">Generating your custom game... Please wait.</p>
                     </div>
                     <div id="start-options">
                         <button id="start-game-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">
@@ -151,424 +151,428 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <script type="module">
-        // --- DOM ELEMENTS ---
-        const app = document.getElementById('app');
-        const initialScreen = document.getElementById('initial-screen');
-        const gameContent = document.getElementById('game-content');
-        const startGameBtn = document.getElementById('start-game-btn');
-        const loadingState = document.getElementById('loading-state');
-        const startOptions = document.getElementById('start-options');
-        const messageArea = document.getElementById('message-area');
-        const scoreboardContainer = document.getElementById('scoreboard');
-        const addTeamBtn = document.getElementById('add-team-btn');
-        const timerDisplay = document.getElementById('timer');
-        const gameControls = document.getElementById('game-controls');
-        const nextRoundBtn = document.getElementById('next-round-btn');
-        const resetGameBtn = document.getElementById('reset-game-btn');
-        const instructionsBtn = document.getElementById('instructions-btn');
-        const instructionsModal = document.getElementById('instructions-modal');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const instructionsContent = document.getElementById('instructions-content');
-        const winnerModal = document.getElementById('winner-modal');
-        const winnerText = document.getElementById('winner-text');
-        const playAgainBtn = document.getElementById('play-again-btn');
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM ELEMENTS ---
+            const app = document.getElementById('app');
+            const initialScreen = document.getElementById('initial-screen');
+            const gameContent = document.getElementById('game-content');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const loadingState = document.getElementById('loading-state');
+            const startOptions = document.getElementById('start-options');
+            const messageArea = document.getElementById('message-area');
+            const scoreboardContainer = document.getElementById('scoreboard');
+            const addTeamBtn = document.getElementById('add-team-btn');
+            const timerDisplay = document.getElementById('timer');
+            const gameControls = document.getElementById('game-controls');
+            const nextRoundBtn = document.getElementById('next-round-btn');
+            const resetGameBtn = document.getElementById('reset-game-btn');
+            const instructionsBtn = document.getElementById('instructions-btn');
+            const instructionsModal = document.getElementById('instructions-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const instructionsContent = document.getElementById('instructions-content');
+            const winnerModal = document.getElementById('winner-modal');
+            const winnerText = document.getElementById('winner-text');
+            const playAgainBtn = document.getElementById('play-again-btn');
 
-        // --- GAME STATE ---
-        let gameState = {};
-        let timerInterval;
+            // --- GAME STATE ---
+            let gameState = {};
+            let timerInterval;
 
-        // --- SOUNDS ---
-        let sounds = {};
-        // Initialize sounds after a user interaction (e.g., clicking 'Start Game')
-        function initializeSounds() {
-            sounds = {
-                correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
-                wrong: new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination(),
-                timerTick: new Tone.MembraneSynth().toDestination(),
-                roundEnd: new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
-            };
-        }
-
-        // --- INSTRUCTIONS TEXT ---
-        const INSTRUCTIONS = {
-            "1": `<h3 class="text-xl font-bold text-blue-400">Round 1: Family Feud</h3><p>One team tries to guess the most popular answers to a survey question. Answers are ranked and have different point values. The team gets three strikes for wrong answers before the other team has a chance to steal the points.</p>`,
-            "2": `<h3 class="text-xl font-bold text-blue-400">Round 2: Rapid Fire</h3><p>Each team gets 60 seconds to answer as many questions as possible. Questions are asked one after another. A correct answer earns 10 points. The timer is relentless!</p>`,
-            "3": `<h3 class="text-xl font-bold text-blue-400">Round 3: KPI Identifier</h3><p>A client scenario is presented. Teams must identify the most relevant Key Performance Indicators (KPIs) from a given list. Each correct KPI earns 20 points, but each incorrect selection loses 10 points!</p>`
-        };
-
-        // --- EVENT LISTENERS ---
-        startGameBtn.addEventListener('click', createNewGame);
-        addTeamBtn.addEventListener('click', addTeam);
-        resetGameBtn.addEventListener('click', resetGame);
-        nextRoundBtn.addEventListener('click', advanceRound);
-        instructionsBtn.addEventListener('click', showInstructions);
-        closeModalBtn.addEventListener('click', () => instructionsModal.classList.add('hidden'));
-        playAgainBtn.addEventListener('click', () => {
-            winnerModal.classList.add('hidden');
-            resetGame();
-        });
-
-        // --- GAME FLOW FUNCTIONS ---
-        async function createNewGame() {
-            loadingState.classList.remove('hidden');
-            startOptions.classList.add('hidden');
-            await Tone.start();
-            initializeSounds();
-
-            try {
-                const gameData = await generateGameContent();
-                if (!gameData) throw new Error("AI failed to generate game data.");
-                
-                gameState = {
-                    gameData,
-                    currentRound: 1,
-                    activeTeamIndex: 0,
-                    teams: [
-                        { name: 'Team 1', score: 0 },
-                        { name: 'Team 2', score: 0 }
-                    ],
-                    roundState: {},
+            // --- SOUNDS ---
+            let sounds = {};
+            // Initialize sounds after a user interaction (e.g., clicking 'Start Game')
+            function initializeSounds() {
+                sounds = {
+                    correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
+                    wrong: new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination(),
+                    timerTick: new Tone.MembraneSynth().toDestination(),
+                    roundEnd: new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
                 };
-                
-                renderGame();
-
-            } catch (error) {
-                console.error("Error creating new game:", error);
-                showMessage("Failed to start game. The AI might be busy.", true);
-                loadingState.classList.add('hidden');
-                startOptions.classList.remove('hidden');
             }
-        }
-        
-        function showInitialScreen() {
-            initialScreen.classList.remove('hidden');
-            gameContent.classList.add('hidden');
-            gameControls.classList.add('hidden');
-            loadingState.classList.add('hidden');
-            startOptions.classList.remove('hidden');
-            scoreboardContainer.innerHTML = '';
-        }
 
-        function advanceRound() {
-            if (gameState.currentRound < 3) {
-                gameState.currentRound++;
-                gameState.roundState = {};
-                gameState.activeTeamIndex = 0;
-                renderGame();
-            } else {
-                endGame();
-            }
-        }
+            // --- INSTRUCTIONS TEXT ---
+            const INSTRUCTIONS = {
+                "1": `<h3 class="text-xl font-bold text-blue-400">Round 1: Family Feud</h3><p>One team tries to guess the most popular answers to a survey question. Answers are ranked and have different point values. The team gets three strikes for wrong answers before the other team has a chance to steal the points.</p>`,
+                "2": `<h3 class="text-xl font-bold text-blue-400">Round 2: Rapid Fire</h3><p>Each team gets 60 seconds to answer as many questions as possible. Questions are asked one after another. A correct answer earns 10 points. The timer is relentless!</p>`,
+                "3": `<h3 class="text-xl font-bold text-blue-400">Round 3: KPI Identifier</h3><p>A client scenario is presented. Teams must identify the most relevant Key Performance Indicators (KPIs) from a given list. Each correct KPI earns 20 points, but each incorrect selection loses 10 points!</p>`
+            };
 
-        function resetGame() {
-            gameState = {};
-            showInitialScreen();
-        }
-        
-        function endGame() {
-            if (!gameState.teams || gameState.teams.length === 0) return;
-            const winner = gameState.teams.reduce((prev, current) => (prev.score > current.score) ? prev : current);
-            winnerText.textContent = `${winner.name} is the winner!`;
-            winnerModal.classList.remove('hidden');
-        }
+            // --- EVENT LISTENERS ---
+            startGameBtn.addEventListener('click', createNewGame);
+            addTeamBtn.addEventListener('click', addTeam);
+            resetGameBtn.addEventListener('click', resetGame);
+            nextRoundBtn.addEventListener('click', advanceRound);
+            instructionsBtn.addEventListener('click', showInstructions);
+            closeModalBtn.addEventListener('click', () => instructionsModal.classList.add('hidden'));
+            playAgainBtn.addEventListener('click', () => {
+                winnerModal.classList.add('hidden');
+                resetGame();
+            });
 
-        // --- RENDERING FUNCTIONS ---
-        function renderGame() {
-            if (!gameState || !gameState.gameData) {
-                showInitialScreen();
-                return;
-            }
-            
-            initialScreen.classList.add('hidden');
-            gameContent.classList.remove('hidden');
-            gameControls.classList.remove('hidden');
+            // --- GAME FLOW FUNCTIONS ---
+            async function createNewGame() {
+                loadingState.classList.remove('hidden');
+                startOptions.classList.add('hidden');
+                await Tone.start();
+                initializeSounds();
 
-            renderTeams();
-            stopTimer();
-
-            switch (gameState.currentRound) {
-                case 1:
-                    renderFamilyFeud();
-                    nextRoundBtn.textContent = 'Start Rapid Fire Round';
-                    break;
-                case 2:
-                    renderRapidFire();
-                    nextRoundBtn.textContent = 'Start KPI Identifier Round';
-                    break;
-                case 3:
-                    renderKPIIdentifier();
-                    nextRoundBtn.textContent = 'Finish Game';
-                    break;
-            }
-        }
-
-        function renderTeams() {
-            scoreboardContainer.innerHTML = '';
-            gameState.teams.forEach((team, index) => {
-                const teamDiv = document.createElement('div');
-                teamDiv.className = 'scoreboard-team p-4 bg-gray-700 rounded-lg flex justify-between items-center';
-                if (index === gameState.activeTeamIndex) {
-                    teamDiv.classList.add('active', 'border-blue-500', 'border-2');
-                }
-
-                const teamNameSpan = document.createElement('span');
-                teamNameSpan.className = 'font-bold text-lg cursor-pointer';
-                teamNameSpan.textContent = team.name;
-                
-                teamNameSpan.addEventListener('click', () => {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = team.name;
-                    input.className = 'team-name-input font-bold text-lg';
-                    teamNameSpan.replaceWith(input);
-                    input.focus();
-
-                    const saveName = () => {
-                        if (input.value.trim()) {
-                            renameTeam(index, input.value.trim());
-                        } else {
-                            renderGame(); // Re-render to restore original name if input is empty
-                        }
+                try {
+                    const gameData = await generateGameContent();
+                    if (!gameData) throw new Error("AI failed to generate game data.");
+                    
+                    gameState = {
+                        gameData,
+                        currentRound: 1,
+                        activeTeamIndex: 0,
+                        teams: [
+                            { name: 'Team 1', score: 0 },
+                            { name: 'Team 2', score: 0 }
+                        ],
+                        roundState: {},
                     };
                     
-                    input.addEventListener('blur', saveName);
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') input.blur();
-                    });
-                });
-
-                const teamScoreSpan = document.createElement('span');
-                teamScoreSpan.className = 'text-2xl font-black text-yellow-300';
-                teamScoreSpan.textContent = team.score;
-
-                teamDiv.appendChild(teamNameSpan);
-                teamDiv.appendChild(teamScoreSpan);
-                scoreboardContainer.appendChild(teamDiv);
-            });
-        }
-
-        function renderFamilyFeud() {
-            const roundData = gameState.gameData.familyFeud[0];
-            if (!gameState.roundState.revealed) gameState.roundState = { revealed: [], strikes: 0, lastPoints: 0 };
-
-            let answerHTML = roundData.answers.map((ans, index) => {
-                const isRevealed = gameState.roundState.revealed.includes(index);
-                return `
-                    <div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}">
-                        <div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div>
-                        <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div>
-                    </div>`;
-            }).join('');
-            
-            let awardButtonsHTML = gameState.teams.map((team, index) => 
-                `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`
-            ).join('');
-
-            gameContent.innerHTML = `
-                <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>
-                <div class="flex justify-between items-center mt-8">
-                     <div id="award-buttons-container" class="flex flex-wrap gap-2">${awardButtonsHTML}</div>
-                    <div class="flex items-center space-x-4">
-                        <span class="text-xl font-bold text-red-500">Strikes:</span>
-                        <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
-                        <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
-                    </div>
-                     <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Active Team</button></div>
-                </div>`;
-            
-            // Event Listeners for Family Feud
-            document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
-                const index = parseInt(e.currentTarget.dataset.index);
-                if (!gameState.roundState.revealed.includes(index)) {
-                    sounds.correct.triggerAttackRelease("C4", "8n");
-                    gameState.roundState.lastPoints = roundData.answers[index].points;
-                    gameState.roundState.revealed.push(index);
                     renderGame();
+
+                } catch (error) {
+                    console.error("Error creating new game:", error);
+                    showMessage("Failed to start game. Please try again.", true);
+                    loadingState.classList.add('hidden');
+                    startOptions.classList.remove('hidden');
                 }
-            }));
+            }
             
-            document.getElementById('strike-btn').addEventListener('click', () => {
-                if (gameState.roundState.strikes < 3) {
-                    sounds.wrong.triggerAttackRelease("C3", "8n");
-                    gameState.roundState.strikes++;
-                    if (gameState.roundState.strikes >= 3) switchActiveTeam();
-                    else renderGame();
-                }
-            });
-
-            document.getElementById('switch-team-btn').addEventListener('click', switchActiveTeam);
-            
-            document.querySelectorAll('#award-buttons-container button').forEach(btn => btn.addEventListener('click', (e) => {
-                const teamIndex = parseInt(e.currentTarget.dataset.teamIndex);
-                if (gameState.roundState.lastPoints > 0) {
-                    awardPoints(teamIndex, gameState.roundState.lastPoints);
-                    gameState.roundState.lastPoints = 0;
-                }
-            }));
-        }
-        
-        function renderRapidFire() {
-            const activeTeam = gameState.teams[gameState.activeTeamIndex];
-            if (!activeTeam) return;
-            if (!gameState.roundState.questionIndex) gameState.roundState.questionIndex = 0;
-
-            const questions = gameState.gameData.rapidFire;
-            const currentQuestion = questions[gameState.roundState.questionIndex];
-
-            if (!currentQuestion) {
-                gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or proceed to the next round.</p>`;
-                stopTimer();
-                return;
+            function showInitialScreen() {
+                initialScreen.classList.remove('hidden');
+                gameContent.classList.add('hidden');
+                gameControls.classList.add('hidden');
+                loadingState.classList.add('hidden');
+                startOptions.classList.remove('hidden');
+                scoreboardContainer.innerHTML = '';
             }
 
-            gameContent.innerHTML = `
-                <div class="text-center flex flex-col items-center justify-center h-full">
-                    <p class="text-xl text-gray-400 mb-2">${activeTeam.name}'s Turn</p>
-                    <h2 class="text-4xl font-bold mb-8">${currentQuestion.question}</h2>
-                    <div class="mt-8 flex space-x-4">
-                        <button id="start-timer-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Start Timer</button>
-                        <button id="correct-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Correct</button>
-                        <button id="pass-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg text-lg">Pass / Incorrect</button>
-                        <button id="switch-team-rf-btn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Switch Team</button>
-                    </div>
-                </div>`;
+            function advanceRound() {
+                if (gameState.currentRound < 3) {
+                    gameState.currentRound++;
+                    gameState.roundState = {};
+                    gameState.activeTeamIndex = 0;
+                    renderGame();
+                } else {
+                    endGame();
+                }
+            }
+
+            function resetGame() {
+                gameState = {};
+                showInitialScreen();
+            }
             
-            document.getElementById('start-timer-btn').addEventListener('click', () => startTimer(60, () => {
-                sounds.roundEnd.triggerAttackRelease("C2", "2n");
-                gameState.roundState.questionIndex = 0;
-                switchActiveTeam();
-            }));
-            document.getElementById('correct-btn').addEventListener('click', () => {
-                sounds.correct.triggerAttackRelease("C5", "8n");
-                awardPoints(gameState.activeTeamIndex, 10);
-                nextRapidFireQuestion();
-            });
-            document.getElementById('pass-btn').addEventListener('click', () => {
-                 sounds.wrong.triggerAttackRelease("A2", "8n");
-                nextRapidFireQuestion();
-            });
-            document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
+            function endGame() {
+                if (!gameState.teams || gameState.teams.length === 0) return;
+                const winner = gameState.teams.reduce((prev, current) => (prev.score > current.score) ? prev : current);
+                winnerText.textContent = `${winner.name} is the winner!`;
+                winnerModal.classList.remove('hidden');
+            }
+
+            // --- RENDERING FUNCTIONS ---
+            function renderGame() {
+                if (!gameState || !gameState.gameData) {
+                    showInitialScreen();
+                    return;
+                }
+                
+                initialScreen.classList.add('hidden');
+                gameContent.classList.remove('hidden');
+                gameControls.classList.remove('hidden');
+
+                renderTeams();
                 stopTimer();
-                gameState.roundState.questionIndex = 0;
-                switchActiveTeam();
-            });
-        }
-        
-        function nextRapidFireQuestion() {
-            gameState.roundState.questionIndex++;
-            renderGame();
-        }
 
-        function renderKPIIdentifier() {
-            const activeTeam = gameState.teams[gameState.activeTeamIndex];
-            if (!activeTeam) return;
-            if (!gameState.roundState.selected) gameState.roundState.selected = [];
-
-            const roundData = gameState.gameData.kpiIdentifier[0];
-
-            let kpiHTML = roundData.kpis.map((kpi, index) => {
-                const isSelected = gameState.roundState.selected.includes(index);
-                return `<div class="kpi-card p-4 rounded-lg cursor-pointer border-2 ${isSelected ? 'bg-blue-600 border-blue-400' : 'bg-gray-700 border-gray-600 hover:border-blue-500'}" data-index="${index}"><p class="text-lg font-semibold">${kpi.kpi}</p></div>`;
-            }).join('');
-
-            gameContent.innerHTML = `
-                <div class="text-center">
-                    <h2 class="text-2xl font-bold mb-2">Client Scenario:</h2>
-                    <p class="text-lg text-gray-300 mb-6 max-w-3xl mx-auto">${roundData.scenario}</p>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">${kpiHTML}</div>
-                <div class="text-center mt-8"><button id="submit-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Submit KPIs for ${activeTeam.name}</button></div>`;
-
-            document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', (e) => {
-                const index = parseInt(e.currentTarget.dataset.index);
-                const selected = gameState.roundState.selected;
-                if (selected.includes(index)) {
-                    gameState.roundState.selected = selected.filter(i => i !== index);
-                } else {
-                    gameState.roundState.selected.push(index);
+                switch (gameState.currentRound) {
+                    case 1:
+                        renderFamilyFeud();
+                        nextRoundBtn.textContent = 'Start Rapid Fire Round';
+                        break;
+                    case 2:
+                        renderRapidFire();
+                        nextRoundBtn.textContent = 'Start KPI Identifier Round';
+                        break;
+                    case 3:
+                        renderKPIIdentifier();
+                        nextRoundBtn.textContent = 'Finish Game';
+                        break;
                 }
-                renderGame();
-            }));
-            
-            document.getElementById('submit-kpis-btn').addEventListener('click', () => {
-                let scoreChange = 0;
-                const selectedIndexes = gameState.roundState.selected;
-                const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
-                
-                selectedIndexes.forEach(selectedIndex => {
-                    scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10;
+            }
+
+            function renderTeams() {
+                scoreboardContainer.innerHTML = '';
+                gameState.teams.forEach((team, index) => {
+                    const teamDiv = document.createElement('div');
+                    teamDiv.className = 'scoreboard-team p-4 bg-gray-700 rounded-lg flex justify-between items-center';
+                    if (index === gameState.activeTeamIndex) {
+                        teamDiv.classList.add('active', 'border-blue-500', 'border-2');
+                    }
+
+                    const teamNameSpan = document.createElement('span');
+                    teamNameSpan.className = 'font-bold text-lg cursor-pointer';
+                    teamNameSpan.textContent = team.name;
+                    
+                    teamNameSpan.addEventListener('click', () => {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = team.name;
+                        input.className = 'team-name-input font-bold text-lg';
+                        teamNameSpan.replaceWith(input);
+                        input.focus();
+
+                        const saveName = () => {
+                            if (input.value.trim()) {
+                                renameTeam(index, input.value.trim());
+                            } else {
+                                renderGame(); // Re-render to restore original name if input is empty
+                            }
+                        };
+                        
+                        input.addEventListener('blur', saveName);
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') input.blur();
+                        });
+                    });
+
+                    const teamScoreSpan = document.createElement('span');
+                    teamScoreSpan.className = 'text-2xl font-black text-yellow-300';
+                    teamScoreSpan.textContent = team.score;
+
+                    teamDiv.appendChild(teamNameSpan);
+                    teamDiv.appendChild(teamScoreSpan);
+                    scoreboardContainer.appendChild(teamDiv);
                 });
+            }
+
+            function renderFamilyFeud() {
+                const roundData = gameState.gameData.familyFeud[0];
+                if (!gameState.roundState.revealed) gameState.roundState = { revealed: [], strikes: 0, lastPoints: 0 };
+
+                let answerHTML = roundData.answers.map((ans, index) => {
+                    const isRevealed = gameState.roundState.revealed.includes(index);
+                    return `
+                        <div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}">
+                            <div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div>
+                            <div class="card-back w-full h-full bg-gray-700 flex items-center justify-between p-4 rounded-lg"><span class="text-lg font-semibold">${ans.answer}</span><span class="text-2xl font-bold text-yellow-300">${ans.points}</span></div>
+                        </div>`;
+                }).join('');
                 
-                awardPoints(gameState.activeTeamIndex, scoreChange);
-                gameState.roundState.selected = []; // Reset for next team
-                switchActiveTeam();
-            });
-        }
+                let awardButtonsHTML = gameState.teams.map((team, index) => 
+                    `<button class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg" data-team-index="${index}">Award ${team.name}</button>`
+                ).join('');
 
-        // --- HELPER & UTILITY FUNCTIONS ---
-        function addTeam() {
-            gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
-            renderGame();
-        }
+                gameContent.innerHTML = `
+                    <div class="text-center"><h2 class="text-3xl font-bold mb-6">${roundData.question}</h2></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${answerHTML}</div>
+                    <div class="flex justify-between items-center mt-8">
+                         <div id="award-buttons-container" class="flex flex-wrap gap-2">${awardButtonsHTML}</div>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-xl font-bold text-red-500">Strikes:</span>
+                            <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
+                            <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
+                        </div>
+                         <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Active Team</button></div>
+                    </div>`;
+                
+                // Event Listeners for Family Feud
+                document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    if (!gameState.roundState.revealed.includes(index)) {
+                        sounds.correct.triggerAttackRelease("C4", "8n");
+                        gameState.roundState.lastPoints = roundData.answers[index].points;
+                        gameState.roundState.revealed.push(index);
+                        renderGame();
+                    }
+                }));
+                
+                document.getElementById('strike-btn').addEventListener('click', () => {
+                    if (gameState.roundState.strikes < 3) {
+                        sounds.wrong.triggerAttackRelease("C3", "8n");
+                        gameState.roundState.strikes++;
+                        if (gameState.roundState.strikes >= 3) switchActiveTeam();
+                        else renderGame();
+                    }
+                });
 
-        function renameTeam(index, newName) {
-            gameState.teams[index].name = newName;
-            renderGame();
-        }
-        
-        function awardPoints(teamIndex, points) {
-            gameState.teams[teamIndex].score += points;
-            renderGame();
-        }
-        
-        function switchActiveTeam() {
-            gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
-            renderGame();
-        }
+                document.getElementById('switch-team-btn').addEventListener('click', switchActiveTeam);
+                
+                document.querySelectorAll('#award-buttons-container button').forEach(btn => btn.addEventListener('click', (e) => {
+                    const teamIndex = parseInt(e.currentTarget.dataset.teamIndex);
+                    if (gameState.roundState.lastPoints > 0) {
+                        awardPoints(teamIndex, gameState.roundState.lastPoints);
+                        gameState.roundState.lastPoints = 0;
+                    }
+                }));
+            }
+            
+            function renderRapidFire() {
+                const activeTeam = gameState.teams[gameState.activeTeamIndex];
+                if (!activeTeam) return;
+                if (gameState.roundState.questionIndex === undefined) gameState.roundState.questionIndex = 0;
 
-        function startTimer(duration, onEnd) {
-            stopTimer();
-            let timeLeft = duration;
-            timerDisplay.textContent = timeLeft;
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timerDisplay.textContent = timeLeft;
-                if (timeLeft <= 10 && timeLeft > 0) {
-                    sounds.timerTick.triggerAttackRelease("C2", "8n", Tone.now());
-                    timerDisplay.classList.add('animate-ping');
-                } else {
-                     timerDisplay.classList.remove('animate-ping');
-                }
-                if (timeLeft <= 0) {
+                const questions = gameState.gameData.rapidFire;
+                const currentQuestion = questions[gameState.roundState.questionIndex];
+
+                if (!currentQuestion) {
+                    gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or proceed to the next round.</p>`;
                     stopTimer();
-                    if (onEnd) onEnd();
+                    return;
                 }
-            }, 1000);
-        }
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-            timerDisplay.textContent = '60';
-            timerDisplay.classList.remove('animate-ping');
-        }
+                gameContent.innerHTML = `
+                    <div class="text-center flex flex-col items-center justify-center h-full">
+                        <p class="text-xl text-gray-400 mb-2">${activeTeam.name}'s Turn</p>
+                        <h2 class="text-4xl font-bold mb-8">${currentQuestion.question}</h2>
+                        <div class="mt-8 flex space-x-4">
+                            <button id="start-timer-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Start Timer</button>
+                            <button id="correct-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Correct</button>
+                            <button id="pass-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg text-lg">Pass / Incorrect</button>
+                            <button id="switch-team-rf-btn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg">Switch Team</button>
+                        </div>
+                    </div>`;
+                
+                document.getElementById('start-timer-btn').addEventListener('click', () => startTimer(60, () => {
+                    sounds.roundEnd.triggerAttackRelease("C2", "2n");
+                    gameState.roundState.questionIndex = 0;
+                    switchActiveTeam();
+                }));
+                document.getElementById('correct-btn').addEventListener('click', () => {
+                    sounds.correct.triggerAttackRelease("C5", "8n");
+                    awardPoints(gameState.activeTeamIndex, 10);
+                    nextRapidFireQuestion();
+                });
+                document.getElementById('pass-btn').addEventListener('click', () => {
+                     sounds.wrong.triggerAttackRelease("A2", "8n");
+                    nextRapidFireQuestion();
+                });
+                document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
+                    stopTimer();
+                    gameState.roundState.questionIndex = 0;
+                    switchActiveTeam();
+                });
+            }
+            
+            function nextRapidFireQuestion() {
+                gameState.roundState.questionIndex++;
+                renderGame();
+            }
 
-        function showInstructions() {
-            instructionsContent.innerHTML = INSTRUCTIONS[gameState.currentRound];
-            instructionsModal.classList.remove('hidden');
-        }
+            function renderKPIIdentifier() {
+                const activeTeam = gameState.teams[gameState.activeTeamIndex];
+                if (!activeTeam) return;
+                if (!gameState.roundState.selected) gameState.roundState.selected = [];
 
-        function showMessage(message, isError = false) {
-            messageArea.textContent = message;
-            messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
-            setTimeout(() => { messageArea.textContent = ''; }, 4000);
-        }
+                const roundData = gameState.gameData.kpiIdentifier[0];
 
-        // --- AI CONTENT GENERATION ---
-        async function generateGameContent() {
-            // Using fallback data for static hosting
-            return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"},{"question":"What does 'NPS' measure?","answer":"Net Promoter Score / Customer Loyalty"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false},{"kpi":"Customer Satisfaction (CSAT) Score","relevant":true}]}]};
-        }
+                let kpiHTML = roundData.kpis.map((kpi, index) => {
+                    const isSelected = gameState.roundState.selected.includes(index);
+                    return `<div class="kpi-card p-4 rounded-lg cursor-pointer border-2 ${isSelected ? 'bg-blue-600 border-blue-400' : 'bg-gray-700 border-gray-600 hover:border-blue-500'}" data-index="${index}"><p class="text-lg font-semibold">${kpi.kpi}</p></div>`;
+                }).join('');
+
+                gameContent.innerHTML = `
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold mb-2">Client Scenario:</h2>
+                        <p class="text-lg text-gray-300 mb-6 max-w-3xl mx-auto">${roundData.scenario}</p>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">${kpiHTML}</div>
+                    <div class="text-center mt-8"><button id="submit-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl">Submit KPIs for ${activeTeam.name}</button></div>`;
+
+                document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    const selected = gameState.roundState.selected;
+                    if (selected.includes(index)) {
+                        gameState.roundState.selected = selected.filter(i => i !== index);
+                    } else {
+                        gameState.roundState.selected.push(index);
+                    }
+                    renderGame();
+                }));
+                
+                document.getElementById('submit-kpis-btn').addEventListener('click', () => {
+                    let scoreChange = 0;
+                    const selectedIndexes = gameState.roundState.selected;
+                    const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
+                    
+                    selectedIndexes.forEach(selectedIndex => {
+                        scoreChange += correctIndexes.includes(selectedIndex) ? 20 : -10;
+                    });
+                    
+                    awardPoints(gameState.activeTeamIndex, scoreChange);
+                    gameState.roundState.selected = []; // Reset for next team
+                    switchActiveTeam();
+                });
+            }
+
+            // --- HELPER & UTILITY FUNCTIONS ---
+            function addTeam() {
+                if (gameState.teams) {
+                    gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
+                    renderGame();
+                }
+            }
+
+            function renameTeam(index, newName) {
+                gameState.teams[index].name = newName;
+                renderGame();
+            }
+            
+            function awardPoints(teamIndex, points) {
+                gameState.teams[teamIndex].score += points;
+                renderGame();
+            }
+            
+            function switchActiveTeam() {
+                gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
+                renderGame();
+            }
+
+            function startTimer(duration, onEnd) {
+                stopTimer();
+                let timeLeft = duration;
+                timerDisplay.textContent = timeLeft;
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = timeLeft;
+                    if (timeLeft <= 10 && timeLeft > 0) {
+                        sounds.timerTick.triggerAttackRelease("C2", "8n", Tone.now());
+                        timerDisplay.classList.add('animate-ping');
+                    } else {
+                         timerDisplay.classList.remove('animate-ping');
+                    }
+                    if (timeLeft <= 0) {
+                        stopTimer();
+                        if (onEnd) onEnd();
+                    }
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+                timerDisplay.textContent = '60';
+                timerDisplay.classList.remove('animate-ping');
+            }
+
+            function showInstructions() {
+                instructionsContent.innerHTML = INSTRUCTIONS[gameState.currentRound];
+                instructionsModal.classList.remove('hidden');
+            }
+
+            function showMessage(message, isError = false) {
+                messageArea.textContent = message;
+                messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
+                setTimeout(() => { messageArea.textContent = ''; }, 4000);
+            }
+
+            // --- AI CONTENT GENERATION ---
+            async function generateGameContent() {
+                // Using fallback data for static hosting
+                return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"},{"question":"What does 'NPS' measure?","answer":"Net Promoter Score / Customer Loyalty"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false},{"kpi":"Customer Satisfaction (CSAT) Score","relevant":true}]}]};
+            }
+        });
     </script>
 </body>
 </html>
