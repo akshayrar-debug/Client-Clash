@@ -151,11 +151,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <script type="module">
-        // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
         // --- DOM ELEMENTS ---
         const app = document.getElementById('app');
         const initialScreen = document.getElementById('initial-screen');
@@ -178,51 +173,21 @@
         const winnerText = document.getElementById('winner-text');
         const playAgainBtn = document.getElementById('play-again-btn');
 
-        // --- FIREBASE SETUP ---
-        const appId = 'client-clash-public'; // A generic public ID
-        let db, auth, userId;
-        const gameId = 'moderator-session'; // Fixed ID for single-screen use
-        let gameUnsubscribe = null;
-
-        // IMPORTANT: Replace this with your own Firebase project configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-
-        try {
-            const firebaseApp = initializeApp(firebaseConfig);
-            db = getFirestore(firebaseApp);
-            auth = getAuth(firebaseApp);
-        } catch (e) {
-            console.error("Firebase initialization failed:", e);
-            app.innerHTML = `<div class="text-red-500 text-center">Error: Could not connect to the game server. Please check your Firebase configuration.</div>`;
-        }
-
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                userId = user.uid;
-            } else {
-                signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
-            }
-        });
-
         // --- GAME STATE ---
         let gameState = {};
         let timerInterval;
 
         // --- SOUNDS ---
-        const sounds = {
-            correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
-            wrong: new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination(),
-            timerTick: new Tone.MembraneSynth().toDestination(),
-            roundEnd: new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
-        };
+        let sounds = {};
+        // Initialize sounds after a user interaction (e.g., clicking 'Start Game')
+        function initializeSounds() {
+            sounds = {
+                correct: new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
+                wrong: new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination(),
+                timerTick: new Tone.MembraneSynth().toDestination(),
+                roundEnd: new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.4, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
+            };
+        }
 
         // --- INSTRUCTIONS TEXT ---
         const INSTRUCTIONS = {
@@ -248,12 +213,13 @@
             loadingState.classList.remove('hidden');
             startOptions.classList.add('hidden');
             await Tone.start();
+            initializeSounds();
 
             try {
                 const gameData = await generateGameContent();
                 if (!gameData) throw new Error("AI failed to generate game data.");
                 
-                const newGameState = {
+                gameState = {
                     gameData,
                     currentRound: 1,
                     activeTeamIndex: 0,
@@ -263,12 +229,8 @@
                     ],
                     roundState: {},
                 };
-
-                await setDoc(doc(db, `artifacts/${appId}/public/data/client_clash/${gameId}`), newGameState);
                 
-                if (!gameUnsubscribe) {
-                    attachGameListener();
-                }
+                renderGame();
 
             } catch (error) {
                 console.error("Error creating new game:", error);
@@ -276,24 +238,6 @@
                 loadingState.classList.add('hidden');
                 startOptions.classList.remove('hidden');
             }
-        }
-
-        function attachGameListener() {
-            if (gameUnsubscribe) gameUnsubscribe();
-            
-            const gameRef = doc(db, `artifacts/${appId}/public/data/client_clash/${gameId}`);
-            gameUnsubscribe = onSnapshot(gameRef, (doc) => {
-                if (doc.exists()) {
-                    gameState = doc.data();
-                    renderGame();
-                } else {
-                    // Game doc doesn't exist, show initial screen
-                    showInitialScreen();
-                }
-            }, (error) => {
-                console.error("Firestore listener error:", error);
-                showMessage("Connection to game lost. Please refresh.", true);
-            });
         }
         
         function showInitialScreen() {
@@ -305,21 +249,24 @@
             scoreboardContainer.innerHTML = '';
         }
 
-        async function advanceRound() {
+        function advanceRound() {
             if (gameState.currentRound < 3) {
-                await updateFirestore({ currentRound: gameState.currentRound + 1, roundState: {}, activeTeamIndex: 0 });
+                gameState.currentRound++;
+                gameState.roundState = {};
+                gameState.activeTeamIndex = 0;
+                renderGame();
             } else {
                 endGame();
             }
         }
 
-        async function resetGame() {
+        function resetGame() {
+            gameState = {};
             showInitialScreen();
-            // Optional: clear the firestore doc
-            // await setDoc(doc(db, `artifacts/${appId}/public/data/client_clash/${gameId}`), {});
         }
         
         function endGame() {
+            if (!gameState.teams || gameState.teams.length === 0) return;
             const winner = gameState.teams.reduce((prev, current) => (prev.score > current.score) ? prev : current);
             winnerText.textContent = `${winner.name} is the winner!`;
             winnerModal.classList.remove('hidden');
@@ -379,8 +326,9 @@
                     const saveName = () => {
                         if (input.value.trim()) {
                             renameTeam(index, input.value.trim());
+                        } else {
+                            renderGame(); // Re-render to restore original name if input is empty
                         }
-                        // No need to replace back, onSnapshot will re-render
                     };
                     
                     input.addEventListener('blur', saveName);
@@ -401,10 +349,10 @@
 
         function renderFamilyFeud() {
             const roundData = gameState.gameData.familyFeud[0];
-            const roundState = gameState.roundState || { revealed: [], strikes: 0, lastPoints: 0 };
+            if (!gameState.roundState.revealed) gameState.roundState = { revealed: [], strikes: 0, lastPoints: 0 };
 
             let answerHTML = roundData.answers.map((ans, index) => {
-                const isRevealed = roundState.revealed.includes(index);
+                const isRevealed = gameState.roundState.revealed.includes(index);
                 return `
                     <div class="answer-card h-20 flex items-center justify-center rounded-lg cursor-pointer ${isRevealed ? 'flipped' : ''}" data-index="${index}">
                         <div class="card-face w-full h-full bg-blue-900 flex items-center justify-center rounded-lg border-2 border-blue-500"><span class="text-3xl font-bold text-blue-300">${index + 1}</span></div>
@@ -423,7 +371,7 @@
                      <div id="award-buttons-container" class="flex flex-wrap gap-2">${awardButtonsHTML}</div>
                     <div class="flex items-center space-x-4">
                         <span class="text-xl font-bold text-red-500">Strikes:</span>
-                        <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - roundState.strikes)}</div>
+                        <div class="flex space-x-2">${' <div class="w-8 h-8 bg-red-500 rounded-full"></div>'.repeat(gameState.roundState.strikes)}${' <div class="w-8 h-8 bg-gray-600 rounded-full"></div>'.repeat(3 - gameState.roundState.strikes)}</div>
                         <button id="strike-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Strike</button>
                     </div>
                      <div><button id="switch-team-btn" class="btn bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-4 rounded-lg">Switch Active Team</button></div>
@@ -432,21 +380,20 @@
             // Event Listeners for Family Feud
             document.querySelectorAll('.answer-card').forEach(card => card.addEventListener('click', (e) => {
                 const index = parseInt(e.currentTarget.dataset.index);
-                const isRevealed = gameState.roundState.revealed?.includes(index);
-                if (!isRevealed) {
+                if (!gameState.roundState.revealed.includes(index)) {
                     sounds.correct.triggerAttackRelease("C4", "8n");
-                    const points = roundData.answers[index].points;
-                    const newRevealed = [...(gameState.roundState.revealed || []), index];
-                    updateFirestore({ roundState: { ...gameState.roundState, revealed: newRevealed, lastPoints: points } });
+                    gameState.roundState.lastPoints = roundData.answers[index].points;
+                    gameState.roundState.revealed.push(index);
+                    renderGame();
                 }
             }));
             
             document.getElementById('strike-btn').addEventListener('click', () => {
-                const currentStrikes = gameState.roundState.strikes || 0;
-                if (currentStrikes < 3) {
+                if (gameState.roundState.strikes < 3) {
                     sounds.wrong.triggerAttackRelease("C3", "8n");
-                    updateFirestore({ roundState: { ...gameState.roundState, strikes: currentStrikes + 1 } });
-                    if (currentStrikes + 1 >= 3) switchActiveTeam();
+                    gameState.roundState.strikes++;
+                    if (gameState.roundState.strikes >= 3) switchActiveTeam();
+                    else renderGame();
                 }
             });
 
@@ -454,10 +401,9 @@
             
             document.querySelectorAll('#award-buttons-container button').forEach(btn => btn.addEventListener('click', (e) => {
                 const teamIndex = parseInt(e.currentTarget.dataset.teamIndex);
-                const pointsToAward = gameState.roundState.lastPoints || 0;
-                if (pointsToAward > 0) {
-                    awardPoints(teamIndex, pointsToAward);
-                    updateFirestore({ roundState: { ...gameState.roundState, lastPoints: 0 } });
+                if (gameState.roundState.lastPoints > 0) {
+                    awardPoints(teamIndex, gameState.roundState.lastPoints);
+                    gameState.roundState.lastPoints = 0;
                 }
             }));
         }
@@ -465,10 +411,10 @@
         function renderRapidFire() {
             const activeTeam = gameState.teams[gameState.activeTeamIndex];
             if (!activeTeam) return;
+            if (!gameState.roundState.questionIndex) gameState.roundState.questionIndex = 0;
 
-            const roundState = gameState.roundState || { questionIndex: 0 };
             const questions = gameState.gameData.rapidFire;
-            const currentQuestion = questions[roundState.questionIndex];
+            const currentQuestion = questions[gameState.roundState.questionIndex];
 
             if (!currentQuestion) {
                 gameContent.innerHTML = `<h2 class="text-3xl font-bold text-center">Rapid Fire Round Over for ${activeTeam.name}!</h2><p class="text-center mt-4">Switch teams or proceed to the next round.</p>`;
@@ -490,8 +436,8 @@
             
             document.getElementById('start-timer-btn').addEventListener('click', () => startTimer(60, () => {
                 sounds.roundEnd.triggerAttackRelease("C2", "2n");
+                gameState.roundState.questionIndex = 0;
                 switchActiveTeam();
-                updateFirestore({ roundState: { questionIndex: 0 }});
             }));
             document.getElementById('correct-btn').addEventListener('click', () => {
                 sounds.correct.triggerAttackRelease("C5", "8n");
@@ -504,25 +450,25 @@
             });
             document.getElementById('switch-team-rf-btn').addEventListener('click', () => {
                 stopTimer();
+                gameState.roundState.questionIndex = 0;
                 switchActiveTeam();
-                updateFirestore({ roundState: { questionIndex: 0 }});
             });
         }
         
         function nextRapidFireQuestion() {
-            const newIndex = (gameState.roundState.questionIndex || 0) + 1;
-            updateFirestore({ roundState: { ...gameState.roundState, questionIndex: newIndex }});
+            gameState.roundState.questionIndex++;
+            renderGame();
         }
 
         function renderKPIIdentifier() {
             const activeTeam = gameState.teams[gameState.activeTeamIndex];
             if (!activeTeam) return;
+            if (!gameState.roundState.selected) gameState.roundState.selected = [];
 
             const roundData = gameState.gameData.kpiIdentifier[0];
-            const roundState = gameState.roundState || { selected: [] };
 
             let kpiHTML = roundData.kpis.map((kpi, index) => {
-                const isSelected = roundState.selected.includes(index);
+                const isSelected = gameState.roundState.selected.includes(index);
                 return `<div class="kpi-card p-4 rounded-lg cursor-pointer border-2 ${isSelected ? 'bg-blue-600 border-blue-400' : 'bg-gray-700 border-gray-600 hover:border-blue-500'}" data-index="${index}"><p class="text-lg font-semibold">${kpi.kpi}</p></div>`;
             }).join('');
 
@@ -536,14 +482,18 @@
 
             document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', (e) => {
                 const index = parseInt(e.currentTarget.dataset.index);
-                const currentSelected = roundState.selected || [];
-                const newSelected = currentSelected.includes(index) ? currentSelected.filter(i => i !== index) : [...currentSelected, index];
-                updateFirestore({ roundState: { ...gameState.roundState, selected: newSelected } });
+                const selected = gameState.roundState.selected;
+                if (selected.includes(index)) {
+                    gameState.roundState.selected = selected.filter(i => i !== index);
+                } else {
+                    gameState.roundState.selected.push(index);
+                }
+                renderGame();
             }));
             
             document.getElementById('submit-kpis-btn').addEventListener('click', () => {
                 let scoreChange = 0;
-                const selectedIndexes = roundState.selected || [];
+                const selectedIndexes = gameState.roundState.selected;
                 const correctIndexes = roundData.kpis.map((kpi, i) => kpi.relevant ? i : -1).filter(i => i !== -1);
                 
                 selectedIndexes.forEach(selectedIndex => {
@@ -551,32 +501,30 @@
                 });
                 
                 awardPoints(gameState.activeTeamIndex, scoreChange);
+                gameState.roundState.selected = []; // Reset for next team
                 switchActiveTeam();
-                updateFirestore({ roundState: { selected: [] } }); // Reset for next team
             });
         }
 
         // --- HELPER & UTILITY FUNCTIONS ---
-        async function addTeam() {
-            const newTeams = [...gameState.teams, { name: `Team ${gameState.teams.length + 1}`, score: 0 }];
-            await updateFirestore({ teams: newTeams });
+        function addTeam() {
+            gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
+            renderGame();
         }
 
-        async function renameTeam(index, newName) {
-            const newTeams = [...gameState.teams];
-            newTeams[index].name = newName;
-            await updateFirestore({ teams: newTeams });
+        function renameTeam(index, newName) {
+            gameState.teams[index].name = newName;
+            renderGame();
         }
         
-        async function awardPoints(teamIndex, points) {
-            const newTeams = [...gameState.teams];
-            newTeams[teamIndex].score += points;
-            await updateFirestore({ teams: newTeams });
+        function awardPoints(teamIndex, points) {
+            gameState.teams[teamIndex].score += points;
+            renderGame();
         }
         
         function switchActiveTeam() {
-            const newIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
-            updateFirestore({ activeTeamIndex: newIndex });
+            gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
+            renderGame();
         }
 
         function startTimer(duration, onEnd) {
@@ -616,35 +564,11 @@
             setTimeout(() => { messageArea.textContent = ''; }, 4000);
         }
 
-        async function updateFirestore(data) {
-            const gameRef = doc(db, `artifacts/${appId}/public/data/client_clash/${gameId}`);
-            await updateDoc(gameRef, data);
-        }
-
         // --- AI CONTENT GENERATION ---
         async function generateGameContent() {
-            const prompt = `
-                Create a team-building game called 'Client Clash' for Customer Success Managers and Project Managers.
-                Generate content for three rounds: Family Feud, Rapid Fire, and KPI Identifier.
-                The tone should be professional but fun. Questions should be relevant to client management, project lifecycles, common acronyms, and business metrics.
-
-                Return the output ONLY as a valid JSON object with the following structure:
-                {
-                  "familyFeud": [ { "question": "Name a common reason for project scope creep.", "answers": [ { "answer": "Unclear initial requirements", "points": 45 }, { "answer": "Client requests 'small' changes", "points": 30 }, { "answer": "Lack of a formal change control process", "points": 15 }, { "answer": "Poor communication", "points": 10 } ] } ],
-                  "rapidFire": [ { "question": "What does 'ARR' stand for in a SaaS business?", "answer": "Annual Recurring Revenue" }, { "question": "Name a popular project management software.", "answer": "Jira, Asana, or Trello" }, { "question": "What is a 'Gantt Chart' used for?", "answer": "Visualizing a project schedule" }, { "question": "What does 'QBR' stand for?", "answer": "Quarterly Business Review" } ],
-                  "kpiIdentifier": [ { "scenario": "A B2B SaaS client has a low product adoption rate for a new feature launched 3 months ago. Their goal is to increase user engagement and demonstrate ROI to their leadership.", "kpis": [ { "kpi": "Feature Adoption Rate", "relevant": true }, { "kpi": "Monthly Active Users (MAU)", "relevant": true }, { "kpi": "Customer Satisfaction Score (CSAT)", "relevant": true }, { "kpi": "Employee Turnover Rate", "relevant": false } ] } ]
-                }`;
-            
-            // This is a placeholder for the Gemini API call.
-            // In a real environment, you would make a fetch request here.
-            // For GitHub Pages, we will use fallback data.
-            console.log("Using fallback data for AI content generation.");
-            return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false}]}]};
+            // Using fallback data for static hosting
+            return {"familyFeud":[{"question":"Name a common client 'red flag' during onboarding.","answers":[{"answer":"'We don't have a dedicated point of contact'","points":40},{"answer":"'Can we start before the contract is signed?'","points":30},{"answer":"'This should be really simple and quick'","points":20},{"answer":"Constantly changing requirements","points":10}]}],"rapidFire":[{"question":"What does 'CRM' stand for?","answer":"Customer Relationship Management"},{"question":"What is a project 'milestone'?","answer":"A specific point in a project's timeline"},{"question":"What does 'NPS' measure?","answer":"Net Promoter Score / Customer Loyalty"}],"kpiIdentifier":[{"scenario":"A client's support ticket volume has increased by 50% in the last month, and their CSAT scores are dropping.","kpis":[{"kpi":"First Response Time (FRT)","relevant":true},{"kpi":"Ticket Resolution Time","relevant":true},{"kpi":"Website Bounce Rate","relevant":false},{"kpi":"Customer Satisfaction (CSAT) Score","relevant":true}]}]};
         }
-        
-        // Initial listener attachment
-        attachGameListener();
-
     </script>
 </body>
 </html>
