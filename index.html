@@ -11,6 +11,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #111827; /* bg-gray-900 */
             color: #f3f4f6; /* text-gray-200 */
+            padding-top: 100px; /* Space for the fixed scoreboard */
         }
         .game-board {
             background-color: #1f2937; /* bg-gray-800 */
@@ -39,9 +40,25 @@
             border-radius: 0.5rem;
             font-weight: 500;
         }
+        .team-name-input {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 4px;
+            width: 120px;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
+
+    <!-- Scoreboard Bar -->
+    <div id="scoreboard-bar" class="absolute top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 p-4 z-20">
+        <div class="w-full max-w-7xl mx-auto flex items-center gap-4">
+            <div id="teams-container" class="flex items-center gap-4"></div>
+            <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm">Add Team</button>
+        </div>
+    </div>
 
     <!-- Independent Timer -->
     <div id="timer-container" class="absolute top-4 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4 z-10">
@@ -110,15 +127,80 @@
             const timerStartBtn = document.getElementById('timer-start-btn');
             const timerStopBtn = document.getElementById('timer-stop-btn');
             const timerResetBtn = document.getElementById('timer-reset-btn');
+            const teamsContainer = document.getElementById('teams-container');
+            const addTeamBtn = document.getElementById('add-team-btn');
 
             // --- GAME STATE ---
             let gameState = {
                 gameData: null,
                 currentRound: 0,
                 questionIndex: 0,
+                teams: [
+                    { name: 'Team 1', score: 0 },
+                    { name: 'Team 2', score: 0 }
+                ]
             };
             let timerInterval;
             let timeLeft = 60;
+
+            // --- SCOREBOARD LOGIC ---
+            function renderScoreboard() {
+                teamsContainer.innerHTML = '';
+                gameState.teams.forEach((team, index) => {
+                    const teamEl = document.createElement('div');
+                    teamEl.className = 'flex items-center gap-2 bg-gray-800 p-2 rounded-lg';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'font-bold cursor-pointer';
+                    nameSpan.textContent = team.name;
+                    nameSpan.addEventListener('click', () => {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = team.name;
+                        input.className = 'team-name-input';
+                        nameSpan.replaceWith(input);
+                        input.focus();
+                        input.addEventListener('blur', () => {
+                            if (input.value.trim()) {
+                                gameState.teams[index].name = input.value.trim();
+                            }
+                            renderScoreboard();
+                        });
+                        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+                    });
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.className = 'text-2xl font-black text-yellow-300 w-12 text-center';
+                    scoreSpan.textContent = team.score;
+
+                    const plusBtn = document.createElement('button');
+                    plusBtn.className = 'btn bg-green-500 text-white rounded-full h-6 w-6 flex items-center justify-center';
+                    plusBtn.textContent = '+';
+                    plusBtn.addEventListener('click', () => {
+                        gameState.teams[index].score += 10;
+                        renderScoreboard();
+                    });
+
+                    const minusBtn = document.createElement('button');
+                    minusBtn.className = 'btn bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center';
+                    minusBtn.textContent = '-';
+                    minusBtn.addEventListener('click', () => {
+                        gameState.teams[index].score -= 10;
+                        renderScoreboard();
+                    });
+
+                    teamEl.appendChild(nameSpan);
+                    teamEl.appendChild(minusBtn);
+                    teamEl.appendChild(scoreSpan);
+                    teamEl.appendChild(plusBtn);
+                    teamsContainer.appendChild(teamEl);
+                });
+            }
+
+            addTeamBtn.addEventListener('click', () => {
+                gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
+                renderScoreboard();
+            });
 
             // --- NAVIGATION ---
             function showPage(pageName) {
@@ -353,6 +435,9 @@
                     throw error; // Re-throw the error to be caught by the caller
                 }
             }
+            
+            // Initial render of the scoreboard
+            renderScoreboard();
         });
     </script>
 </body>
