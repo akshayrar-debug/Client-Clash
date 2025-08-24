@@ -11,7 +11,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #111827; /* bg-gray-900 */
             color: #f3f4f6; /* text-gray-200 */
-            padding-top: 100px; /* Space for the fixed scoreboard */
+            padding-top: 120px; /* Increased space for the fixed scoreboard and timer */
         }
         .game-board {
             background-color: #1f2937; /* bg-gray-800 */
@@ -65,7 +65,7 @@
     </div>
 
     <!-- Independent Timer -->
-    <div id="timer-container" class="absolute top-4 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4 z-10">
+    <div id="timer-container" class="absolute top-24 right-4 game-board p-4 rounded-2xl shadow-lg flex items-center space-x-4 z-10">
         <div id="timer-display" class="text-5xl text-red-500 font-black">60</div>
         <div class="flex flex-col space-y-2">
             <button id="timer-start-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Start</button>
@@ -92,6 +92,9 @@
                         <button data-round="1" class="navigate-btn btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">EMEA Feud</button>
                         <button data-round="3" class="navigate-btn btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">KPI Identifier</button>
                         <button data-round="2" class="navigate-btn btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Fastest Finger First</button>
+                    </div>
+                    <div class="mt-6">
+                        <button id="moderator-view-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg" disabled>Moderator View</button>
                     </div>
                 </div>
             </div>
@@ -122,6 +125,16 @@
                     </div>
                 </div>
             </div>
+
+             <!-- Moderator Page -->
+            <div id="moderator-page" class="page">
+                 <div class="game-board p-6 rounded-2xl shadow-2xl">
+                    <div id="moderator-content"></div>
+                     <div class="text-center mt-6">
+                        <button id="mod-back-to-menu-btn" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-6 rounded-lg">Back to Menu</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -132,11 +145,14 @@
                 mainMenu: document.getElementById('main-menu-page'),
                 instructions: document.getElementById('instructions-page'),
                 game: document.getElementById('game-page'),
+                moderator: document.getElementById('moderator-page'),
             };
             const gameContent = document.getElementById('game-content');
+            const moderatorContent = document.getElementById('moderator-content');
             const loadingState = document.getElementById('loading-state-instructions');
             const messageArea = document.getElementById('message-area');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
+            const modBackToMenuBtn = document.getElementById('mod-back-to-menu-btn');
             const timerDisplay = document.getElementById('timer-display');
             const timerStartBtn = document.getElementById('timer-start-btn');
             const timerStopBtn = document.getElementById('timer-stop-btn');
@@ -146,6 +162,7 @@
             const instructionsTitle = document.getElementById('instructions-title');
             const instructionsText = document.getElementById('instructions-text');
             const startGameBtn = document.getElementById('start-game-btn');
+            const moderatorViewBtn = document.getElementById('moderator-view-btn');
 
             // --- GAME STATE ---
             let gameState = {
@@ -160,16 +177,21 @@
             };
             let timerInterval;
             let timeLeft = 60;
-            let roundTimerInterval;
 
             const INSTRUCTIONS = {
                 1: { title: "EMEA Feud", text: `
-                    <p><strong>Objective:</strong> A case study of a potential client will be presented. Your goal is to identify the client's key pain points by guessing a series of critical questions identified by the AI.</p>
-                    <ul class="list-disc list-inside mt-2">
-                        <li>Teams have <strong>2 minutes</strong> to read the case study together.</li>
-                        <li>Each person has <strong>15 seconds</strong> to guess an answer before control moves to the next team.</li>
-                        <li>A team gets <strong>2 wrong attempts</strong>. After that, the question passes to the next team for a steal.</li>
-                        <li><strong>Scoring:</strong> 10 points per right question, 40 bonus points for getting all questions, and 20 bonus points for a successful steal.</li>
+                    <p><strong>Objective:</strong> A case study of a potential client will be presented. Your team's goal is to uncover the client's key pain points by guessing the 5 most critical questions an AI has identified.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>Your team has <strong>2 minutes</strong> to discuss the case study.</li>
+                        <li>After discussion, your team gets <strong>5 attempts</strong> to guess the critical questions.</li>
+                        <li>If your team makes <strong>2 wrong attempts</strong>, the turn passes to the next team for a steal.</li>
+                        <li><strong>Scoring:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li><strong>10 points</strong> for every correct question.</li>
+                                <li><strong>40 bonus points</strong> if your team correctly guesses all 5 questions.</li>
+                                <li><strong>30 bonus points</strong> if another team successfully steals and completes the set of 5 questions.</li>
+                            </ul>
+                        </li>
                     </ul>` },
                 2: { title: "Fastest Finger First", text: `
                     <p><strong>Objective:</strong> Test your quick calculation and knowledge of key metrics.</p>
@@ -279,6 +301,7 @@
                     
                     renderGame();
                     showPage('game');
+                    moderatorViewBtn.disabled = false;
                 } catch (error) {
                     console.error("Error starting game:", error);
                     showMessage("Failed to start game. Please try again.", true);
@@ -291,6 +314,13 @@
 
             backToMenuBtn.addEventListener('click', () => {
                 showPage('mainMenu');
+            });
+            modBackToMenuBtn.addEventListener('click', () => {
+                showPage('mainMenu');
+            });
+            moderatorViewBtn.addEventListener('click', () => {
+                renderModeratorView();
+                showPage('moderator');
             });
 
             // --- TIMER LOGIC ---
@@ -330,7 +360,7 @@
 
             async function refreshContent(round, btn) {
                 btn.disabled = true;
-                btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 
                 try {
                     const gameData = await generateGameContent(round);
@@ -343,80 +373,33 @@
                 }
             }
             
-            function runRoundTimer(duration, displayEl, onEnd) {
-                clearInterval(roundTimerInterval);
-                let roundTimeLeft = duration;
-                displayEl.textContent = roundTimeLeft;
-                roundTimerInterval = setInterval(() => {
-                    roundTimeLeft--;
-                    displayEl.textContent = roundTimeLeft;
-                    if (roundTimeLeft <= 0) {
-                        clearInterval(roundTimerInterval);
-                        if (onEnd) onEnd();
-                    }
-                }, 1000);
-            }
-
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud;
-                const currentQuestion = roundData.questions[gameState.questionIndex];
-                
-                let questionHTML = `
+                let questionsHTML = roundData.questions.map((item, index) => `
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <p class="font-bold text-lg">${currentQuestion.q}</p>
+                        <p class="font-bold text-lg">${item.q}</p>
                         <div class="flex items-center gap-4 mt-2">
-                            <p id="feud-answer" class="text-green-400 blur-sm transition-all flex-grow text-left">${currentQuestion.a}</p>
-                            <button data-target="feud-answer" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left">${item.a}</p>
+                            <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
                         </div>
-                    </div>`;
-
-                const isLastQuestion = gameState.questionIndex >= roundData.questions.length - 1;
+                    </div>
+                `).join('');
 
                 gameContent.innerHTML = `
-                    <div class="text-center"><h2 class="text-3xl font-bold mb-4">EMEA Feud Case Study</h2></div>
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
+                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
+                    </div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
-                    <div id="feud-timer-section" class="text-center mb-4"></div>
-                    <div id="feud-question-section" class="space-y-4 hidden">${questionHTML}</div>
-                    <div id="feud-controls" class="text-center mt-4"></div>
-                    `;
+                    <div class="space-y-4">${questionsHTML}</div>`;
                 
-                const timerSection = document.getElementById('feud-timer-section');
-                const questionSection = document.getElementById('feud-question-section');
-                const controlsSection = document.getElementById('feud-controls');
-
-                function startGuessingPhase() {
-                    timerSection.innerHTML = `<p class="text-xl">Guessing time: <span id="guess-timer" class="font-bold text-2xl text-yellow-400">15</span>s</p>`;
-                    questionSection.classList.remove('hidden');
-                    controlsSection.innerHTML = `<button id="next-feud-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">${isLastQuestion ? 'Next Case' : 'Next Question'}</button>`;
-                    
-                    document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
-                        document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
+                document.getElementById('refresh-feud-btn').addEventListener('click', (e) => refreshContent(1, e.currentTarget));
+                document.querySelectorAll('.show-answer-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const targetId = e.currentTarget.dataset.target;
+                        document.getElementById(targetId).classList.remove('blur-sm');
                         e.currentTarget.style.display = 'none';
                     });
-
-                    document.getElementById('next-feud-btn').addEventListener('click', (e) => {
-                        if (isLastQuestion) {
-                            refreshContent(1, e.currentTarget);
-                        } else {
-                            gameState.questionIndex++;
-                            gameState.activeTeamIndex = (gameState.activeTeamIndex + 1) % gameState.teams.length;
-                            renderFamilyFeud();
-                        }
-                    });
-
-                    const guessTimerEl = document.getElementById('guess-timer');
-                    runRoundTimer(15, guessTimerEl, () => {
-                        // Auto-advance to next team/question on timeout
-                        document.getElementById('next-feud-btn').click();
-                    });
-                }
-
-                timerSection.innerHTML = `<button id="start-reading-btn" class="btn bg-blue-600 hover:bg-blue-700">Start 2-Min Reading Timer</button>`;
-                document.getElementById('start-reading-btn').addEventListener('click', (e) => {
-                    e.currentTarget.style.display = 'none';
-                    timerSection.innerHTML = `<p class="text-xl">Reading time left: <span id="read-timer" class="font-bold text-2xl text-yellow-400">120</span>s</p>`;
-                    const readTimerEl = document.getElementById('read-timer');
-                    runRoundTimer(120, readTimerEl, startGuessingPhase);
                 });
             }
             
@@ -487,6 +470,45 @@
                     e.currentTarget.style.display = 'none';
                 });
             }
+            
+            function renderModeratorView() {
+                const round = gameState.currentRound;
+                const data = gameState.gameData;
+                let content = '';
+
+                if (round === 1) {
+                    const roundData = data.familyFeud;
+                    let questionsHTML = roundData.questions.map(item => `
+                        <div class="p-4 bg-gray-800 rounded-lg text-left">
+                            <p class="font-bold text-lg">${item.q}</p>
+                            <p class="text-green-400 mt-1">${item.a}</p>
+                        </div>`).join('');
+                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Answers)</h2>
+                               <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
+                               <div class="space-y-4">${questionsHTML}</div>`;
+                } else if (round === 2) {
+                     const roundData = data.fastestFinger;
+                     let questionsHTML = roundData.map(item => `
+                        <div class="p-4 bg-gray-800 rounded-lg text-left">
+                            <p class="text-lg">${item.scenario}</p>
+                            <p class="font-bold text-xl mt-2">${item.question}</p>
+                            <p class="text-green-400 text-lg font-bold mt-2">${item.answer}</p>
+                        </div>`).join('');
+                    content = `<h2 class="text-3xl font-bold text-center mb-6">Fastest Finger First (Answers)</h2>
+                               <div class="space-y-4">${questionsHTML}</div>`;
+                } else if (round === 3) {
+                    const roundData = data.kpiIdentifier;
+                    const kpiListHTML = roundData.kpis.map(kpi => `<li class="kpi-list-item">${kpi}</li>`).join('');
+                    content = `<div class="text-center">
+                                <h2 class="text-3xl font-bold mb-2">Whatfix Champion Persona</h2>
+                                <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
+                                <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
+                                <h4 class="text-2xl font-bold mb-4">Potential KPIs</h4>
+                                <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul>
+                               </div>`;
+                }
+                moderatorContent.innerHTML = content;
+            }
 
             function showMessage(message, isError = false) {
                 messageArea.textContent = message;
@@ -498,7 +520,7 @@
             async function generateGameContent(round) {
                 let prompt;
                 if (round === 1) {
-                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
+                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
                 } else if (round === 2) {
                     prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
