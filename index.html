@@ -115,6 +115,7 @@
             let gameState = {
                 gameData: null,
                 currentRound: 0,
+                questionIndex: 0,
             };
             let timerInterval;
             let timeLeft = 60;
@@ -136,6 +137,7 @@
                         
                         gameState.gameData = gameData;
                         gameState.currentRound = round;
+                        gameState.questionIndex = 0;
                         
                         renderGame();
                         showPage('game');
@@ -187,112 +189,100 @@
                 }
             }
 
-            async function refreshFamilyFeud() {
-                const refreshBtn = document.getElementById('refresh-feud-btn');
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+            async function refreshContent(round, btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 
                 try {
-                    const gameData = await generateGameContent(1);
+                    const gameData = await generateGameContent(round);
                     gameState.gameData = gameData;
-                    renderFamilyFeud();
+                    gameState.questionIndex = 0;
+                    renderGame();
                 } catch (error) {
-                     showMessage("Failed to refresh case.", true);
-                     refreshBtn.disabled = false;
-                     refreshBtn.textContent = 'Refresh Case';
+                     showMessage("Failed to refresh content.", true);
+                     renderGame(); // Re-render to restore button state
                 }
             }
 
             function renderFamilyFeud() {
                 const roundData = gameState.gameData.familyFeud;
-                let questionsHTML = roundData.questions.map((item, index) => `
+                const currentQuestion = roundData.questions[gameState.questionIndex];
+                
+                let questionHTML = `
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <p class="font-bold text-lg">${item.q}</p>
+                        <p class="font-bold text-lg">${currentQuestion.q}</p>
                         <div class="flex items-center gap-4 mt-2">
-                            <p id="feud-answer-${index}" class="text-green-400 blur-sm transition-all flex-grow text-left">${item.a}</p>
-                            <button data-target="feud-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                            <p id="feud-answer" class="text-green-400 blur-sm transition-all flex-grow text-left">${currentQuestion.a}</p>
+                            <button data-target="feud-answer" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+
+                const isLastQuestion = gameState.questionIndex >= roundData.questions.length - 1;
 
                 gameContent.innerHTML = `
-                    <div class="flex justify-center items-center gap-4 mb-4">
-                        <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
-                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
-                    </div>
+                    <div class="text-center"><h2 class="text-3xl font-bold mb-4">EMEA Feud Case Study</h2></div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
-                    <div class="space-y-4">${questionsHTML}</div>`;
+                    <div class="space-y-4">${questionHTML}</div>
+                    <div class="text-center mt-4">
+                        <button id="next-feud-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">
+                            ${isLastQuestion ? 'Next Case' : 'Next Question'}
+                        </button>
+                    </div>
+                    `;
                 
-                document.getElementById('refresh-feud-btn').addEventListener('click', refreshFamilyFeud);
-                document.querySelectorAll('.show-answer-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const targetId = e.currentTarget.dataset.target;
-                        document.getElementById(targetId).classList.remove('blur-sm');
-                        e.currentTarget.style.display = 'none';
-                    });
+                document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
+                    document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
+                    e.currentTarget.style.display = 'none';
+                });
+
+                document.getElementById('next-feud-btn').addEventListener('click', (e) => {
+                    if (isLastQuestion) {
+                        refreshContent(1, e.currentTarget);
+                    } else {
+                        gameState.questionIndex++;
+                        renderFamilyFeud();
+                    }
                 });
             }
             
-            async function refreshFastestFinger() {
-                const refreshBtn = document.getElementById('refresh-fff-btn');
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-
-                try {
-                    const gameData = await generateGameContent(2);
-                    gameState.gameData = gameData;
-                    renderFastestFingerFirst();
-                } catch (error) {
-                     showMessage("Failed to refresh scenarios.", true);
-                     refreshBtn.disabled = false;
-                     refreshBtn.textContent = 'Refresh';
-                }
-            }
-
             function renderFastestFingerFirst() {
                 const roundData = gameState.gameData.fastestFinger;
-                let questionsHTML = roundData.map((item, index) => `
+                const currentQuestion = roundData[gameState.questionIndex];
+
+                let questionHTML = `
                     <div class="p-4 bg-gray-800 rounded-lg">
-                        <p class="text-lg">${item.scenario}</p>
-                        <p class="font-bold text-xl mt-2">${item.question}</p>
+                        <p class="text-lg">${currentQuestion.scenario}</p>
+                        <p class="font-bold text-xl mt-2">${currentQuestion.question}</p>
                         <div class="flex items-center gap-4 mt-2">
-                            <p id="fff-answer-${index}" class="text-green-400 text-lg font-bold mt-2 blur-sm transition-all flex-grow text-left">${item.answer}</p>
-                            <button data-target="fff-answer-${index}" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
+                            <p id="fff-answer" class="text-green-400 text-lg font-bold mt-2 blur-sm transition-all flex-grow text-left">${currentQuestion.answer}</p>
+                            <button data-target="fff-answer" class="show-answer-btn btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show Answer</button>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                
+                const isLastQuestion = gameState.questionIndex >= roundData.length - 1;
 
                 gameContent.innerHTML = `
-                    <div class="flex justify-center items-center gap-4 mb-6">
-                        <h2 class="text-3xl font-bold">Fastest Finger First</h2>
-                        <button id="refresh-fff-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh</button>
-                    </div>
-                    <div class="space-y-4">${questionsHTML}</div>`;
+                    <div class="text-center mb-6"><h2 class="text-3xl font-bold">Fastest Finger First</h2></div>
+                    <div class="space-y-4">${questionHTML}</div>
+                     <div class="text-center mt-4">
+                        <button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">
+                            ${isLastQuestion ? 'Next Scenarios' : 'Next Question'}
+                        </button>
+                    </div>`;
 
-                document.getElementById('refresh-fff-btn').addEventListener('click', refreshFastestFinger);
-                document.querySelectorAll('.show-answer-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const targetId = e.currentTarget.dataset.target;
-                        document.getElementById(targetId).classList.remove('blur-sm');
-                        e.currentTarget.style.display = 'none';
-                    });
+                document.querySelector('.show-answer-btn').addEventListener('click', (e) => {
+                    document.getElementById(e.currentTarget.dataset.target).classList.remove('blur-sm');
+                    e.currentTarget.style.display = 'none';
                 });
-            }
 
-            async function refreshKPIs() {
-                const refreshBtn = document.getElementById('refresh-kpi-btn');
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-                
-                try {
-                    const gameData = await generateGameContent(3);
-                    gameState.gameData = gameData;
-                    renderKPIIdentifier();
-                } catch (error) {
-                     showMessage("Failed to refresh role.", true);
-                     refreshBtn.disabled = false;
-                     refreshBtn.textContent = 'Refresh Role';
-                }
+                document.getElementById('next-fff-btn').addEventListener('click', (e) => {
+                     if (isLastQuestion) {
+                        refreshContent(2, e.currentTarget);
+                    } else {
+                        gameState.questionIndex++;
+                        renderFastestFingerFirst();
+                    }
+                });
             }
 
             function renderKPIIdentifier() {
@@ -303,7 +293,6 @@
                     <div class="text-center">
                         <div class="flex justify-center items-center gap-4 mb-2">
                             <h2 class="text-3xl font-bold">Whatfix Champion Persona</h2>
-                            <button id="refresh-kpi-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Role</button>
                         </div>
                         <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
                         <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
@@ -312,9 +301,12 @@
                             <button id="show-kpis-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">Show KPIs</button>
                         </div>
                         <ul id="kpi-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center blur-md transition-all">${kpiListHTML}</ul>
+                        <div class="text-center mt-4">
+                            <button id="next-kpi-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Next Persona</button>
+                        </div>
                     </div>`;
 
-                document.getElementById('refresh-kpi-btn').addEventListener('click', refreshKPIs);
+                document.getElementById('next-kpi-btn').addEventListener('click', (e) => refreshContent(3, e.currentTarget));
                 document.getElementById('show-kpis-btn').addEventListener('click', (e) => {
                     document.getElementById('kpi-list').classList.remove('blur-md');
                     e.currentTarget.style.display = 'none';
@@ -333,7 +325,7 @@
                 if (round === 1) {
                     prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points. Each question should have a concise, ideal answer. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "...", "a": "..."}]}}`;
                 } else if (round === 2) {
-                    prompt = `Generate 3 'Fastest Finger First' scenarios for Customer Success Managers or Project Managers. Each scenario should provide numbers to calculate a common business metric. For each, provide the scenario, a question asking for the calculation, and a detailed answer that explains the formula and shows the calculation. Example: Scenario: "A company starts with 100 customers and loses 10 by the end of the month." Question: "What is the monthly churn rate?" Answer: "Churn Rate = (Customers Lost / Starting Customers) * 100. Calculation: (10 / 100) * 100 = 10%." Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
+                    prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
                     prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to Whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
