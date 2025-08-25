@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Clash</title>
+    <title>2 fast 2 curious</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -57,9 +57,12 @@
 <body class="flex items-center justify-center min-h-screen p-4 relative">
     <!-- Scoreboard Bar -->
     <div id="scoreboard-bar" class="absolute top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 p-4 z-20">
-        <div class="w-full max-w-7xl mx-auto flex items-center gap-4">
-            <div id="teams-container" class="flex items-center gap-4"></div>
-            <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm">Add Team</button>
+        <div class="w-full max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div id="teams-container" class="flex items-center gap-4"></div>
+                <button id="add-team-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm">Add Team</button>
+            </div>
+            <button id="new-game-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm">New Game</button>
         </div>
     </div>
 
@@ -76,7 +79,7 @@
     <div id="app" class="w-full max-w-7xl mx-auto">
         <!-- Header -->
         <header class="text-center mb-6 pt-4">
-            <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Client Clash</h1>
+            <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">2 fast 2 curious</h1>
             <p class="text-gray-400 mt-2">The Ultimate Game for CS and PM Professionals</p>
         </header>
 
@@ -142,6 +145,7 @@
             const timerResetBtn = document.getElementById('timer-reset-btn');
             const teamsContainer = document.getElementById('teams-container');
             const addTeamBtn = document.getElementById('add-team-btn');
+            const newGameBtn = document.getElementById('new-game-btn');
             const instructionsTitle = document.getElementById('instructions-title');
             const instructionsText = document.getElementById('instructions-text');
             const startGameBtn = document.getElementById('start-game-btn');
@@ -192,6 +196,18 @@
                     </ul>` }
             };
 
+            // --- LOCAL STORAGE LOGIC ---
+            function saveGameState() {
+                localStorage.setItem('2fast2curiousState', JSON.stringify(gameState.teams));
+            }
+
+            function loadGameState() {
+                const savedState = localStorage.getItem('2fast2curiousState');
+                if (savedState) {
+                    gameState.teams = JSON.parse(savedState);
+                }
+            }
+
             // --- SCOREBOARD LOGIC ---
             function renderScoreboard() {
                 teamsContainer.innerHTML = '';
@@ -217,6 +233,7 @@
                                 gameState.teams[index].name = input.value.trim();
                             }
                             renderScoreboard();
+                            saveGameState();
                         });
                         input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
                     });
@@ -231,6 +248,7 @@
                     plusBtn.addEventListener('click', () => {
                         gameState.teams[index].score += 10;
                         renderScoreboard();
+                        saveGameState();
                     });
 
                     const minusBtn = document.createElement('button');
@@ -239,6 +257,7 @@
                     minusBtn.addEventListener('click', () => {
                         gameState.teams[index].score -= 10;
                         renderScoreboard();
+                        saveGameState();
                     });
                     
                     teamEl.appendChild(nameSpan);
@@ -252,6 +271,18 @@
             addTeamBtn.addEventListener('click', () => {
                 gameState.teams.push({ name: `Team ${gameState.teams.length + 1}`, score: 0 });
                 renderScoreboard();
+                saveGameState();
+            });
+
+            newGameBtn.addEventListener('click', () => {
+                if (confirm("Are you sure you want to start a new game? All team names and scores will be reset.")) {
+                    localStorage.removeItem('2fast2curiousState');
+                    gameState.teams = [
+                        { name: 'Team 1', score: 0 },
+                        { name: 'Team 2', score: 0 }
+                    ];
+                    renderScoreboard();
+                }
             });
 
             // --- NAVIGATION ---
@@ -537,11 +568,11 @@
             async function generateGameContent(round) {
                 let prompt;
                 if (round === 1) {
-                    prompt = `You are a sales strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a sales rep should ask to uncover pain points, ranked by signal strength. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "..."}]}}`;
+                    prompt = `You are a CS strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a CSM should ask to uncover pain points, ranked by signal strength. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "..."}]}}`;
                 } else if (round === 2) {
                     prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
                 } else if (round === 3) {
-                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales, Digital transformation lead ,Training head), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager, training lead, change manager etc.). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
                 }
 
                 let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
@@ -574,7 +605,8 @@
                 }
             }
             
-            // Initial render of the scoreboard
+            // Initial setup
+            loadGameState();
             renderScoreboard();
         });
     </script>
