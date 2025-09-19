@@ -212,13 +212,19 @@
 
             // --- LOCAL STORAGE LOGIC ---
             function saveGameState() {
-                localStorage.setItem('2fast2curiousState', JSON.stringify(gameState.teams));
+                const stateToSave = {
+                    teams: gameState.teams,
+                    counters: questionCounters
+                };
+                localStorage.setItem('2fast2curiousState', JSON.stringify(stateToSave));
             }
 
             function loadGameState() {
                 const savedState = localStorage.getItem('2fast2curiousState');
                 if (savedState) {
-                    gameState.teams = JSON.parse(savedState);
+                    const parsedState = JSON.parse(savedState);
+                    gameState.teams = parsedState.teams || [{ name: 'Team 1', score: 0 }, { name: 'Team 2', score: 0 }];
+                    questionCounters = parsedState.counters || { 1: 0, 2: 0, 3: 0 };
                 }
             }
 
@@ -294,10 +300,8 @@
 
                 const handleConfirm = () => {
                     localStorage.removeItem('2fast2curiousState');
-                    gameState.teams = [
-                        { name: 'Team 1', score: 0 },
-                        { name: 'Team 2', score: 0 }
-                    ];
+                    gameState.teams = [ { name: 'Team 1', score: 0 }, { name: 'Team 2', score: 0 }];
+                    questionCounters = { 1: 0, 2: 0, 3: 0 };
                     renderScoreboard();
                     closeModal();
                 };
@@ -334,20 +338,18 @@
             });
 
             startGameBtn.addEventListener('click', () => {
-                try {
-                    const gameData = getGameContentFromSheet(gameState.currentRound);
-                    if (!gameData) throw new Error("Failed to load game data.");
-                    
-                    gameState.gameData = gameData;
-                    gameState.questionIndex = 0;
-                    
-                    renderGame();
-                    showPage('game');
-                } catch (error) {
-                    console.error("Error starting game:", error);
-                    showMessage("Failed to start game. Please try again.", true);
+                const gameData = getGameContentFromSheet(gameState.currentRound);
+                if (!gameData) {
+                    showMessage("All questions for this round have been played. Start a 'New Game' to play again.", false);
                     showPage('mainMenu');
+                    return;
                 }
+                
+                gameState.gameData = gameData;
+                gameState.questionIndex = 0;
+                
+                renderGame();
+                showPage('game');
             });
 
             backToMenuBtn.addEventListener('click', () => {
@@ -398,15 +400,14 @@
                 btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 
                 setTimeout(() => { // Simulate a small delay for user feedback
-                    try {
-                        const gameData = getGameContentFromSheet(round);
-                        gameState.gameData = gameData;
-                        gameState.questionIndex = 0;
-                        renderGame();
-                    } catch (error) {
-                         showMessage("Failed to refresh content.", true);
-                         renderGame(); 
+                    const gameData = getGameContentFromSheet(round);
+                    if (!gameData) {
+                        gameContent.innerHTML = `<div class="text-center text-xl font-bold text-yellow-400">You've completed all questions for this round!<br>Start a 'New Game' from the main menu to play again.</div>`;
+                        return;
                     }
+                    gameState.gameData = gameData;
+                    gameState.questionIndex = 0;
+                    renderGame();
                 }, 200);
             }
             
@@ -425,7 +426,7 @@
                     <div class="flex justify-center items-center gap-4 mb-4">
                         <h2 class="text-3xl font-bold">EMEA Feud Case Study</h2>
                         <button id="moderator-view-btn-game" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-md text-sm">Moderator View</button>
-                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Refresh Case</button>
+                        <button id="refresh-feud-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Next Case</button>
                     </div>
                     <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
                     <div class="space-y-4">${questionsHTML}</div>`;
@@ -547,7 +548,7 @@
 
             function showMessage(message, isError = false) {
                 messageArea.textContent = message;
-                messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-300 my-4 h-6 font-semibold';
+                messageArea.className = isError ? 'text-red-500 my-4 h-6 font-semibold' : 'text-yellow-400 my-4 h-6 font-semibold';
                 setTimeout(() => { messageArea.textContent = ''; }, 4000);
             }
 
@@ -598,21 +599,31 @@
             };
 
             function getGameContentFromSheet(round) {
-                let data;
+                let data = null;
                 if (round === 1) {
                     const roundData = allQuestions["EMEA Feud"];
-                    const selected = roundData[Math.floor(Math.random() * roundData.length)];
+                    const currentIndex = questionCounters[1];
+                    if (currentIndex >= roundData.length) return null;
+                    const selected = roundData[currentIndex];
+                    questionCounters[1]++;
                     data = { familyFeud: { case: selected.case, questions: selected.questions.map(q => ({ q })) } };
                 } else if (round === 2) {
                     const roundData = allQuestions["Fastest Finger First"];
-                    const shuffled = [...roundData].sort(() => 0.5 - Math.random());
-                    const selected = shuffled.slice(0, 3);
+                    const blockIndex = questionCounters[2];
+                    const startIndex = blockIndex * 3;
+                    if (startIndex >= roundData.length) return null;
+                    const selected = roundData.slice(startIndex, startIndex + 3);
+                    questionCounters[2]++;
                     data = { fastestFinger: selected };
                 } else if (round === 3) {
                     const roundData = allQuestions["KPI Identifier"];
-                    const selected = roundData[Math.floor(Math.random() * roundData.length)];
+                    const currentIndex = questionCounters[3];
+                    if (currentIndex >= roundData.length) return null;
+                    const selected = roundData[currentIndex];
+                    questionCounters[3]++;
                     data = { kpiIdentifier: { role: selected.role, description: selected.description, kpis: selected.kpis } };
                 }
+                saveGameState();
                 return data;
             }
             
@@ -623,7 +634,4 @@
     </script>
 </body>
 </html>
-
-"
-Please change the font of the game to Inter
 
