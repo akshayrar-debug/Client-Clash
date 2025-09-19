@@ -55,11 +55,22 @@
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 relative">
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-sm text-center">
+            <p id="modal-text" class="text-lg mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="modal-confirm-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Yes</button>
+                <button id="modal-cancel-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scoreboard Bar -->
     <div id="scoreboard-bar" class="absolute top-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 p-4 z-20">
         <div class="w-full max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <button id="home-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-md" title="Back to Main Menu">
+                 <button id="home-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-md" title="Back to Main Menu">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     </svg>
@@ -108,13 +119,6 @@
                 <div class="game-board p-6 rounded-2xl shadow-2xl text-center">
                     <h2 id="instructions-title" class="text-3xl font-bold mb-4"></h2>
                     <div id="instructions-text" class="text-lg text-left text-gray-300 max-w-3xl mx-auto mb-6 space-y-2"></div>
-                    <div id="loading-state-instructions" class="hidden my-4">
-                        <svg class="animate-spin h-8 w-8 text-blue-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p class="mt-2 text-lg text-gray-300">AI is generating your game... Please wait.</p>
-                    </div>
                     <button id="start-game-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg">Start Game</button>
                 </div>
             </div>
@@ -142,7 +146,6 @@
             };
             const homeBtn = document.getElementById('home-btn');
             const gameContent = document.getElementById('game-content');
-            const loadingState = document.getElementById('loading-state-instructions');
             const messageArea = document.getElementById('message-area');
             const backToMenuBtn = document.getElementById('back-to-menu-btn');
             const timerDisplay = document.getElementById('timer-display');
@@ -155,6 +158,11 @@
             const instructionsTitle = document.getElementById('instructions-title');
             const instructionsText = document.getElementById('instructions-text');
             const startGameBtn = document.getElementById('start-game-btn');
+            const confirmationModal = document.getElementById('confirmation-modal');
+            const modalText = document.getElementById('modal-text');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
 
             // --- GAME STATE ---
             let gameState = {
@@ -172,7 +180,7 @@
 
             const INSTRUCTIONS = {
                 1: { title: "EMEA Feud", text: `
-                    <p><strong>Objective:</strong> A case study of a potential client will be presented. Your team's goal is to uncover the client's key pain points by guessing the 5 most critical questions an AI has identified.</p>
+                    <p><strong>Objective:</strong> A case study of a potential client will be presented. Your team's goal is to uncover the client's key pain points by guessing the 5 most critical questions.</p>
                     <ul class="list-disc list-inside mt-2 space-y-1">
                         <li>Your team has <strong>2 minutes</strong> to discuss the case study.</li>
                         <li>After discussion, your team gets <strong>5 attempts</strong> to guess the critical questions.</li>
@@ -197,7 +205,7 @@
                     <p><strong>Objective:</strong> Analyze a sponsor/champion persona and identify their relevant KPIs.</p>
                      <ul class="list-disc list-inside mt-2">
                         <li>You have <strong>1 minute</strong> to guess all relevant KPIs for the stakeholder.</li>
-                        <li>The AI will identify the top 6 KPIs. Every correct guess earns <strong>10 points</strong>.</li>
+                        <li>The top 6 KPIs will be identified. Every correct guess earns <strong>10 points</strong>.</li>
                         <li>You can use a <strong>Joker</strong> to double your points if you think you can guess all 6 correctly.</li>
                     </ul>` }
             };
@@ -281,15 +289,29 @@
             });
 
             newGameBtn.addEventListener('click', () => {
-                if (confirm("Are you sure you want to start a new game? All team names and scores will be reset.")) {
+                modalText.textContent = "Are you sure you want to start a new game? All team names and scores will be reset.";
+                confirmationModal.classList.remove('hidden');
+
+                const handleConfirm = () => {
                     localStorage.removeItem('2fast2curiousState');
                     gameState.teams = [
                         { name: 'Team 1', score: 0 },
                         { name: 'Team 2', score: 0 }
                     ];
                     renderScoreboard();
-                }
+                    closeModal();
+                };
+
+                const closeModal = () => {
+                    confirmationModal.classList.add('hidden');
+                    modalConfirmBtn.removeEventListener('click', handleConfirm);
+                    modalCancelBtn.removeEventListener('click', closeModal);
+                };
+
+                modalConfirmBtn.addEventListener('click', handleConfirm, { once: true });
+                modalCancelBtn.addEventListener('click', closeModal, { once: true });
             });
+
 
             homeBtn.addEventListener('click', () => {
                 showPage('mainMenu');
@@ -311,13 +333,10 @@
                 });
             });
 
-            startGameBtn.addEventListener('click', async () => {
-                loadingState.classList.remove('hidden');
-                startGameBtn.style.display = 'none';
-
+            startGameBtn.addEventListener('click', () => {
                 try {
-                    const gameData = await generateGameContent(gameState.currentRound);
-                    if (!gameData) throw new Error("AI failed to generate game data.");
+                    const gameData = getGameContentFromSheet(gameState.currentRound);
+                    if (!gameData) throw new Error("Failed to load game data.");
                     
                     gameState.gameData = gameData;
                     gameState.questionIndex = 0;
@@ -327,10 +346,7 @@
                 } catch (error) {
                     console.error("Error starting game:", error);
                     showMessage("Failed to start game. Please try again.", true);
-                    showPage('mainMenu'); // Go back to menu on error
-                } finally {
-                    loadingState.classList.add('hidden');
-                    startGameBtn.style.display = 'block';
+                    showPage('mainMenu');
                 }
             });
 
@@ -340,7 +356,7 @@
 
             // --- TIMER LOGIC ---
             function startTimer() {
-                clearInterval(timerInterval); // Prevent multiple intervals
+                clearInterval(timerInterval); 
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     timerDisplay.textContent = timeLeft;
@@ -371,26 +387,27 @@
                     case 2: renderFastestFingerFirst(); break;
                     case 3: renderKPIIdentifier(); break;
                 }
-                // Attach listener for the new moderator view button
                 const modBtn = document.getElementById('moderator-view-btn-game');
                 if(modBtn) {
                     modBtn.addEventListener('click', openModeratorViewInNewTab);
                 }
             }
 
-            async function refreshContent(round, btn) {
+            function refreshContent(round, btn) {
                 btn.disabled = true;
                 btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 
-                try {
-                    const gameData = await generateGameContent(round);
-                    gameState.gameData = gameData;
-                    gameState.questionIndex = 0;
-                    renderGame();
-                } catch (error) {
-                     showMessage("Failed to refresh content.", true);
-                     renderGame(); // Re-render to restore button state
-                }
+                setTimeout(() => { // Simulate a small delay for user feedback
+                    try {
+                        const gameData = getGameContentFromSheet(round);
+                        gameState.gameData = gameData;
+                        gameState.questionIndex = 0;
+                        renderGame();
+                    } catch (error) {
+                         showMessage("Failed to refresh content.", true);
+                         renderGame(); 
+                    }
+                }, 200);
             }
             
             function renderFamilyFeud() {
@@ -438,13 +455,9 @@
                     </div>`;
                 
                 const isLastQuestion = gameState.questionIndex >= roundData.length - 1;
-
-                let navigationButtonsHTML = '';
-                if (isLastQuestion) {
-                    navigationButtonsHTML = `<button id="next-scenarios-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Next Scenarios</button>`;
-                } else {
-                    navigationButtonsHTML = `<button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Next Question</button>`;
-                }
+                let navigationButtonsHTML = isLastQuestion 
+                    ? `<button id="next-scenarios-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Next Scenarios</button>`
+                    : `<button id="next-fff-btn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Next Question</button>`;
 
                 gameContent.innerHTML = `
                     <div class="text-center mb-6 flex justify-center items-center gap-4">
@@ -462,9 +475,7 @@
                 });
 
                 if (isLastQuestion) {
-                    document.getElementById('next-scenarios-btn').addEventListener('click', (e) => {
-                        refreshContent(2, e.currentTarget);
-                    });
+                    document.getElementById('next-scenarios-btn').addEventListener('click', (e) => refreshContent(2, e.currentTarget));
                 } else {
                     document.getElementById('next-fff-btn').addEventListener('click', () => {
                         gameState.questionIndex++;
@@ -506,25 +517,7 @@
                 const content = getModeratorContentHTML();
                 const newTab = window.open();
                 newTab.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Moderator View</title>
-                        <script src="https://cdn.tailwindcss.com"><\/script>
-                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-                        <style>
-                            body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
-                            .game-board { background-color: #1f2937; border: 1px solid #374151; }
-                            .kpi-list-item { background-color: #374151; padding: 0.75rem; border-radius: 0.5rem; font-weight: 500; }
-                        </style>
-                    </head>
-                    <body class="p-8">
-                        <div class="game-board p-6 rounded-2xl shadow-2xl max-w-4xl mx-auto">
-                            ${content}
-                        </div>
-                    </body>
-                    </html>
+                    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Moderator View</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"><style>body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; } .game-board { background-color: #1f2937; border: 1px solid #374151; } .kpi-list-item { background-color: #374151; padding: 0.75rem; border-radius: 0.5rem; font-weight: 500; }</style></head><body class="p-8"><div class="game-board p-6 rounded-2xl shadow-2xl max-w-4xl mx-auto">${content}</div></body></html>
                 `);
                 newTab.document.close();
             }
@@ -534,39 +527,20 @@
                 const data = gameState.gameData;
                 let content = '';
 
-                if (!data) {
-                    return '<p>No game has been started yet.</p>';
-                }
+                if (!data) return '<p>No game has been started yet.</p>';
 
                 if (round === 1) {
                     const roundData = data.familyFeud;
-                    let questionsHTML = roundData.questions.map(item => `
-                        <div class="p-4 bg-gray-800 rounded-lg text-left">
-                            <p class="font-bold text-lg">${item.q}</p>
-                        </div>`).join('');
-                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Moderator)</h2>
-                               <p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p>
-                               <div class="space-y-4">${questionsHTML}</div>`;
+                    let questionsHTML = roundData.questions.map(item => `<div class="p-4 bg-gray-800 rounded-lg text-left"><p class="font-bold text-lg">${item.q}</p></div>`).join('');
+                    content = `<h2 class="text-3xl font-bold text-center mb-4">EMEA Feud (Moderator)</h2><p class="text-lg text-gray-300 mb-6 bg-gray-900 p-4 rounded-lg">${roundData.case}</p><div class="space-y-4">${questionsHTML}</div>`;
                 } else if (round === 2) {
                      const roundData = data.fastestFinger;
-                     let questionsHTML = roundData.map(item => `
-                        <div class="p-4 bg-gray-800 rounded-lg text-left">
-                            <p class="text-lg">${item.scenario}</p>
-                            <p class="font-bold text-xl mt-2">${item.question}</p>
-                            <p class="text-green-400 text-lg font-bold mt-2">${item.answer}</p>
-                        </div>`).join('');
-                    content = `<h2 class="text-3xl font-bold text-center mb-6">Fastest Finger First (Answers)</h2>
-                               <div class="space-y-4">${questionsHTML}</div>`;
+                     let questionsHTML = roundData.map(item => `<div class="p-4 bg-gray-800 rounded-lg text-left"><p class="text-lg">${item.scenario}</p><p class="font-bold text-xl mt-2">${item.question}</p><p class="text-green-400 text-lg font-bold mt-2">${item.answer}</p></div>`).join('');
+                    content = `<h2 class="text-3xl font-bold text-center mb-6">Fastest Finger First (Answers)</h2><div class="space-y-4">${questionsHTML}</div>`;
                 } else if (round === 3) {
                     const roundData = data.kpiIdentifier;
                     const kpiListHTML = roundData.kpis.map(kpi => `<li class="kpi-list-item">${kpi}</li>`).join('');
-                    content = `<div class="text-center">
-                                <h2 class="text-3xl font-bold mb-2">Whatfix Champion Persona</h2>
-                                <h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3>
-                                <p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p>
-                                <h4 class="text-2xl font-bold mb-4">Potential KPIs</h4>
-                                <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul>
-                               </div>`;
+                    content = `<div class="text-center"><h2 class="text-3xl font-bold mb-2">Whatfix Champion Persona</h2><h3 class="text-4xl font-bold text-yellow-300 mb-4">${roundData.role}</h3><p class="text-lg text-gray-300 max-w-4xl mx-auto mb-8">${roundData.description}</p><h4 class="text-2xl font-bold mb-4">Potential KPIs</h4><ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-center">${kpiListHTML}</ul></div>`;
                 }
                 return content;
             }
@@ -577,45 +551,69 @@
                 setTimeout(() => { messageArea.textContent = ''; }, 4000);
             }
 
-            // --- AI CONTENT GENERATION ---
-            async function generateGameContent(round) {
-                let prompt;
+            // --- Game Content from CSV ---
+            const allQuestions = {
+                "EMEA Feud": [
+                    { case: "A large German automotive manufacturer, AutoWerk GmbH, is rolling out a new, highly customized Salesforce instance to its global sales and service teams. Adoption has been slow, with many employees in their non-German-speaking offices reverting to old spreadsheets. They are facing inconsistent data entry, and the training team is overwhelmed with requests for basic how-to guidance.", questions: ["How are you currently measuring user adoption and proficiency across different regions and languages?", "What is the average time it takes to onboard a new sales or service team member onto the new Salesforce platform?", "Can you quantify the business impact of inconsistent or inaccurate data in your sales pipeline?", "How much time is your central training team spending on creating and updating support documentation versus strategic tasks?", "What process is in place to support employees when a critical sales or service process is updated within Salesforce?"] },
+                    { case: "Banque Dubois, a major retail bank in France, has just launched a new internal compliance application to adhere to recent EU financial regulations. The application is complex, and bank tellers are making frequent errors, leading to compliance risks and frustrated customers. The support desk has seen a 200% increase in tickets related to this new software.", questions: ["What are the financial or regulatory penalties associated with an employee failing to follow the correct process in the new compliance app?", "How do you ensure that all 10,000 of your tellers are instantly proficient when a critical compliance workflow is updated?", "What percentage of your support desk's time is currently dedicated to answering procedural questions about the new application?", "How are you tracking the completion and effectiveness of your current training for this new tool?", "How much productivity is lost when an employee has to stop their work to find help or look up how to complete a task?"] },
+                    { case: "A UK-based pharmaceutical company uses Veeva CRM to manage its field sales interactions. There is high turnover in their sales team, and new reps take over 6 months to become fully productive. They have a massive library of training PowerPoints and PDFs, but reps complain they can't find what they need when they need it.", questions: ["What is the average cost to the business for every month a new sales rep is not fully productive on Veeva?", "How do you currently ensure that all sales reps are following the most up-to-date, approved messaging and processes?", "What is the direct impact on your sales forecast accuracy when data isn't entered into the CRM correctly and on time?", "How do you support your sales reps in the moments they are actually using the CRM and need immediate help?", "How do you measure the ROI of your current sales training content and methodologies?"] },
+                    { case: "A Scandinavian logistics giant, Nordic Sped, is migrating from a legacy system to SAP S/4HANA for its supply chain management. The go-live is in three months, and user acceptance testing has revealed that warehouse staff are struggling with the new workflows, leading to significant data entry errors and shipping delays.", questions: ["What is the potential cost of a single shipping delay or data error caused by improper use of the new SAP system?", "How will you train and support your entire warehouse staff, who work in different shifts and speak multiple languages, simultaneously on go-live day?", "What is your strategy for reducing the expected surge in IT support tickets immediately following the launch?", "How do you plan to manage and communicate changes to SAP workflows to all users after the initial launch?", "How will you certify that every employee is proficient in the critical tasks before they get access to the live production environment?"] },
+                    { case: "An Italian luxury fashion retailer is deploying Microsoft Dynamics 365 across its European stores. They hire many temporary staff during peak holiday seasons who must be trained quickly on inventory and point-of-sale processes. Last season, high training overhead and transaction errors led to lost sales and frustrated customers.", questions: ["How do you quantify the revenue lost due to transaction errors or slow checkout times during your peak sales season?", "What is the current cost and time required to get a seasonal employee fully competent on your POS system?", "How do you ensure a consistent, premium customer experience when your staff is constantly changing?", "What is your process for rapidly deploying updates to promotions or sales processes across all stores?", "How much are you spending on re-training temporary staff who return for another season but have forgotten the processes?"] },
+                    { case: "A Swiss private wealth management firm is implementing a new, custom-built portfolio management platform to provide bespoke services to high-net-worth clients. The platform is powerful but not intuitive. Relationship managers, used to older methods, are avoiding the tool, jeopardizing the firm's goal of offering a unified, data-driven advisory experience.", questions: ["How does the lack of adoption of the new platform impact your firm's ability to demonstrate a competitive advantage to prospective clients?", "What is the compliance risk if advisors are not using the approved platform for tracking client interactions and financial advice?", "How are you measuring the opportunity cost of your relationship managers spending time struggling with software instead of engaging with clients?", "What is the strategy to ensure that all advisors can master new features as the platform evolves with market demands?", "How does inconsistent platform usage affect the accuracy of the firm-wide financial data used by leadership for strategic planning?"] },
+                    { case: "A large hospitality group based in Dubai is rolling out a new Oracle OPERA Cloud property management system to its portfolio of hotels. The front-desk staff has a high turnover rate and diverse linguistic backgrounds. The group is concerned that inconsistent check-in processes will negatively impact their guest satisfaction scores.", questions: ["How do you directly correlate guest satisfaction scores (NPS/CSAT) with the speed and efficiency of your check-in and check-out process?", "What is the current 'time-to-competency' for a new front-desk employee, and what is the cost associated with this training period?", "How do you ensure every employee, regardless of their native language, follows the exact same procedure for high-value tasks like room upgrades or handling billing disputes?", "What is the financial impact of a single booking error or an incorrectly processed payment due to user error in the system?", "How do you provide on-demand support to your 24/7 staff during night shifts when training or IT teams are unavailable?"] },
+                    { case: "A Netherlands-based public sector organization is responsible for processing citizen applications for social benefits through a new online portal built on ServiceNow. Caseworkers are finding it difficult to navigate the complex eligibility rules and workflows, causing a significant backlog and delaying aid to vulnerable citizens.", questions: ["What is the target processing time for a citizen's application, and how does the current backlog compare to that service-level agreement (SLA)?", "How do you ensure every caseworker applies the complex and frequently changing eligibility rules with 100% accuracy?", "What is the operational cost of having to re-work applications that were processed incorrectly?", "How are you training caseworkers on new policies and portal updates to ensure immediate compliance?", "How does the application backlog impact the public perception and trust in your organization's ability to serve citizens effectively?"] },
+                    { case: "An Irish tech company is acquiring a smaller startup and needs to migrate the acquired sales team from their old CRM (Pipedrive) to the company's standard Salesforce instance. The acquired team is resistant to change, and leadership is concerned about a post-acquisition dip in sales productivity and morale.", questions: ["What is your primary concern regarding a potential drop in sales performance in the first quarter post-acquisition?", "How do you plan to onboard the acquired team onto a completely new sales process and technology stack without causing disruption?", "What is the strategy for harmonizing the sales data from two different CRMs to create a single source of truth for forecasting?", "How will you provide immediate, in-the-flow-of-work support to a team that is culturally accustomed to a different way of working?", "How will you measure the success of this integration in terms of both sales productivity and employee sentiment?"] },
+                    { case: "A Spanish renewable energy company uses a custom-built project management tool to oversee the construction of wind farms. The tool requires engineers to follow strict safety and environmental compliance protocols. Recent audits have revealed inconsistent reporting, putting the company at risk of regulatory fines and project delays.", questions: ["Can you quantify the potential financial impact of a single compliance breach or safety violation on a project?", "How do you currently certify that every engineer on every site is proficient in the latest compliance reporting procedures?", "What is the cost of project delays caused by administrative errors or incomplete data entry in your management tool?", "How do you provide performance support to engineers who are working in remote, often offline, field locations?", "How much time are your senior engineers spending on correcting reports versus their core engineering responsibilities?"] },
+                    { case: "A Belgian university is deploying Workday for its HR and student management processes. The administrative staff, many of whom have been with the university for decades, are struggling to adapt from paper-based processes to the new digital workflows. This is causing delays in student registration and payroll processing.", questions: ["How are the delays in student registration impacting the university's revenue and student satisfaction at the start of a semester?", "What is the risk associated with payroll errors caused by incorrect data entry into the new Workday system?", "What is your strategy for training a diverse, non-technical user base that is highly resistant to technological change?", "How do you plan to manage the surge in support requests from thousands of staff and students during peak periods like enrollment and exams?", "How will you ensure that sensitive employee and student data is handled correctly and securely within the new system?"] },
+                    { case: "A major airline based in the UAE is using a new crew scheduling software to optimize flight assignments. The complexity of union rules, flight regulations, and crew qualifications is leading to scheduling errors. These errors cause flight delays and crew shortages, resulting in significant operational costs and customer dissatisfaction.", questions: ["What is the average cost to the airline for a single flight delay or cancellation caused by a crew scheduling error?", "How do you ensure that every scheduler is 100% compliant with the complex and ever-changing aviation regulations and union agreements?", "How much time is spent manually correcting schedules versus allowing the system to automate the process?", "What is your process for rapidly training schedulers on new routes or aircraft that introduce new scheduling constraints?", "How does crew morale and attrition relate to the fairness and accuracy of the scheduling process?"] },
+                ],
+                "Fastest Finger First": [
+                    { scenario: "A SaaS company starts the quarter with an MRR of $200,000. Over the quarter, they add $30,000 in new MRR from new customers. They also add $15,000 in expansion MRR from existing customers. However, they lost $25,000 in MRR from churning customers.", question: "What is their Net Revenue Retention (NRR) for the quarter?", answer: "95%" },
+                    { scenario: "A project manager is reviewing their team's performance. They notice that while the team is completing tasks, the total time from the moment a task is first started until it is fully delivered to the customer seems very long.", question: "What key agile metric measures this total elapsed time, and why is it important to track?", answer: "Cycle Time" },
+                    { scenario: "A company had 500 customers at the beginning of the year. By the end of the year, 45 of those original customers had cancelled their subscriptions.", question: "What was the company's annual Customer Churn Rate?", answer: "9%" },
+                    { scenario: "A Customer Success Manager is trying to demonstrate the value of their product to a new client. The client wants to know how long it will take before they start seeing a tangible, positive result from using the software.", question: "What CS metric defines the period between a customer's purchase and the moment they first realize tangible value from the product?", answer: "Time to Value (TTV)" },
+                    { scenario: "An agile team planned to complete 80 story points in a 2-week sprint. At the end of the sprint, they had completed 60 story points.", question: "What is the team's Velocity for this sprint?", answer: "60" },
+                    { scenario: "A company sends out a survey asking its customers 'How likely are you to recommend our product to a friend or colleague?' on a scale of 0-10. They are trying to categorize the respondents to understand customer loyalty.", question: "What is the term for customers who respond with a score of 0-6?", answer: "Detractors" },
+                    { scenario: "A project was scheduled to have $50,000 worth of work completed by today. However, only $40,000 worth of work has actually been finished.", question: "What is the Schedule Variance (SV) for this project, and is it favorable or unfavorable?", answer: "-$10,000 (Unfavorable)" },
+                    { scenario: "During project planning, a manager identifies a sequence of tasks that must be completed in order for the entire project to be finished on time. If any single task in this sequence is delayed, the entire project deadline will be pushed back.", question: "What is the term for this sequence of dependent tasks?", answer: "Critical Path" },
+                    { scenario: "A customer pays a subscription of $2,000 per year. The company's gross margin is 80%, and the customer churn rate is 10% per year.", question: "What is the Customer Lifetime Value (CLV) for this customer?", answer: "$16,000" },
+                    { scenario: "A support team is tracking its efficiency. They want to measure the number of cases that are fully resolved and closed after the very first interaction with the customer, without needing any follow-up.", question: "What is this metric commonly called?", answer: "First Contact Resolution (FCR) or First Call Resolution" },
+                    { scenario: "A project team starts a 10-day sprint with 100 story points of work planned. After 5 days (halfway through the sprint), they have completed 60 story points.", question: "What does the team's Burndown Rate indicate about their progress?", answer: "They are ahead of schedule." },
+                    { scenario: "A company wants to measure the success of its customer onboarding program. They want to track the percentage of new customers who successfully complete all the critical setup steps within the first 30 days.", question: "What is this metric called?", answer: "Customer Onboarding Completion Rate" },
+                ],
+                "KPI Identifier": [
+                    { role: "Chief Information Officer (CIO)", description: "The CIO of a multinational corporation is under pressure to maximize the ROI of their massive software portfolio, which includes Workday, Salesforce, and SAP. They are concerned about rising IT support costs, low employee productivity on these complex systems, and the security risks associated with poor data entry and process adherence.", kpis: ["Reduction in software-related IT support tickets", "Increase in employee self-service rates", "Improvement in data quality and process compliance", "Acceleration of user onboarding time for new applications", "Higher adoption rates for key software features", "Increased ROI on enterprise software investments"] },
+                    { role: "Sales Operations Manager", description: "The Sales Ops Manager at a fast-growing B2B tech company is struggling to enforce consistent processes in Salesforce. New sales reps take too long to ramp up, data for forecasting is often incomplete or inaccurate, and the sales team constantly complains that they can't remember the correct steps for complex deal registrations or quoting procedures.", kpis: ["Reduction in new sales rep time-to-first-deal", "Increase in CRM data integrity and completeness", "Higher adherence to the defined sales methodology", "Reduction in 'how-to' requests to the sales ops team", "Faster rollout and adoption of new sales tools", "Improvement in sales forecast accuracy"] },
+                    { role: "Training Lead", description: "The Training Lead for a large contact center is responsible for onboarding hundreds of new agents per year on a suite of tools including Zendesk and an internal order management system. They find that classroom-style training is ineffective, as agents forget most of it by the time they take their first call. This leads to long handling times and poor customer satisfaction scores.", kpis: ["Decrease in new agent onboarding and ramp-up time", "Reduction in Average Handle Time (AHT)", "Increase in First Call Resolution (FCR) rates", "Improvement in agent compliance with key processes", "Higher agent confidence and satisfaction scores", "Reduction in costs associated with re-training"] },
+                    { role: "Head of Digital Transformation", description: "This leader is responsible for driving the successful adoption of new digital tools across the entire organization. Their biggest challenge is overcoming employee resistance to change and ensuring that the company realizes the promised benefits of its multi-million dollar technology investments. They need a way to make change less disruptive and empower employees to adapt quickly.", kpis: ["Faster user adoption of new enterprise applications", "Reduction in productivity dips during technology rollouts", "Increased employee engagement with new digital initiatives", "Lower costs associated with change management programs", "Accelerated time-to-value for new technology platforms", "Improvement in overall organizational agility"] },
+                    { role: "VP of Sales", description: "The VP of Sales is focused on hitting aggressive revenue targets. They are concerned that inconsistent CRM usage is leading to an inaccurate sales pipeline, missed opportunities, and a long sales cycle. They need their global sales team to follow a unified, data-driven sales process.", kpis: ["Increased sales velocity", "Shortened sales cycle length", "Improved sales forecast accuracy", "Higher lead-to-opportunity conversion rate", "Increased adoption of the standard sales methodology", "Reduction in sales rep ramp time"] },
+                    { role: "Product Owner", description: "The Product Owner for an internal software application is frustrated. User feedback is consistently negative, with users complaining that the application is not intuitive. The development team spends too much time fixing user errors instead of building new features, and adoption of new releases is extremely low.", kpis: ["Increased user satisfaction scores (CSAT/NPS)", "Reduction in user-generated error rates", "Decrease in 'how-to' support tickets", "Faster adoption of new features and releases", "Increased daily/monthly active users (DAU/MAU)", "Positive shift in qualitative user feedback"] },
+                    { role: "Change Manager", description: "A Change Manager is overseeing the rollout of Oracle Fusion Cloud ERP. Their primary goal is to ensure a smooth transition with minimal disruption to business operations. They are measured on how quickly and effectively employees adapt to the new system and processes.", kpis: ["Reduction in employee productivity dip during go-live", "Achievement of target user adoption rates by deadline", "Decrease in change-related resistance and negative feedback", "Reduction in post-launch IT support ticket volume", "Faster completion of user acceptance testing (UAT)", "High completion rates for mandatory training modules"] },
+                    { role: "Head of Customer Success", description: "The Head of CS is battling a high customer churn rate. They've identified that a poor and inconsistent onboarding experience is the leading cause. Customers are not realizing the product's value quickly enough, leading to low engagement and eventual cancellation.", kpis: ["Increased Net Revenue Retention (NRR)", "Reduction in customer churn rate", "Decrease in Time to First Value (TTFV)", "Higher product adoption/engagement scores in the first 90 days", "Increased Onboarding Completion Rate", "Improvement in customer health scores"] },
+                    { role: "IT Application Manager", description: "This manager is responsible for a portfolio of applications. They are spending too much budget on application support and maintenance. Users constantly need help with basic tasks, and the IT team has no visibility into how features are actually being used, making it difficult to plan for future upgrades.", kpis: ["Reduction in total cost of ownership (TCO) for applications", "Increased employee self-service for support issues", "Reduction in application maintenance and support overhead", "Improved visibility into application feature usage", "Faster and more efficient application upgrade cycles", "Increased user sentiment score for IT-managed tools"] },
+                    { role: "Chief Financial Officer - CFO", description: "The CFO is focused on financial governance and efficiency. They have approved a significant investment in a new procurement system (like Coupa or SAP Ariba) to control spending and streamline processes, but are concerned about employee compliance and realizing the projected cost savings.", kpis: ["Increased percentage of spend under management", "Higher compliance with preferred supplier policies", "Reduction in invoice processing time and cost", "Improved accuracy of financial data and reporting", "Faster new employee onboarding onto financial systems", "Achievement of projected ROI for the new system"] },
+                    { role: "HRIS Manager", description: "The HRIS Manager is responsible for the company's Workday instance. During open enrollment and performance review cycles, the HR team is flooded with repetitive questions from employees on how to complete tasks in the system. This prevents the HR team from focusing on more strategic initiatives.", kpis: ["Reduction in 'how-to' queries to the HR team during peak cycles", "Increased employee self-sufficiency in HR processes", "Improved data accuracy in employee records", "Faster completion rates for performance reviews", "Higher employee satisfaction with HR systems", "Reduction in time spent by HR team on administrative support"] },
+                    { role: "Chief Operating Officer - COO", description: "The COO is responsible for the overall operational efficiency of the company. They are concerned that disparate systems and inconsistent processes across different departments are creating bottlenecks, increasing operational risk, and making it difficult to scale the business effectively.", kpis: ["Improvement in cross-departmental process cycle times", "Reduction in operational error rates", "Increased adherence to standard operating procedures (SOPs)", "Faster onboarding and time-to-productivity for new hires", "Improved scalability of business operations", "Reduction in operational risk and compliance breaches"] },
+                ]
+            };
+
+            function getGameContentFromSheet(round) {
+                let data;
                 if (round === 1) {
-                    prompt = `You are a CS strategy expert for Whatfix, focusing on the EMEA market. Create a short, one-paragraph case study about a potential enterprise client in the EMEA region facing digital transformation challenges. Based on this case, provide 5 "pure signal" questions a CSM should ask to uncover pain points, ranked by signal strength. Return ONLY a valid JSON object like this: {"familyFeud": {"case": "...", "questions": [{"q": "..."}]}}`;
+                    const roundData = allQuestions["EMEA Feud"];
+                    const selected = roundData[Math.floor(Math.random() * roundData.length)];
+                    data = { familyFeud: { case: selected.case, questions: selected.questions.map(q => ({ q })) } };
                 } else if (round === 2) {
-                    prompt = `You are an expert in Customer Success and Project Management metrics. Generate 3 'Fastest Finger First' scenarios. For each scenario, randomly pick one of the following topics: Customer Churn Rate, Detractor Score, Customer Lifetime Value (CLV), Monthly Recurring Revenue (MRR), Velocity, Schedule Variance (SV), Net Revenue Retention (NRR), Cycle Time, Time to Value (TTV), Customer Retention Rate, Customer Onboarding Completion Rate, Critical Path, Burndown Rate. Based on the chosen topic, randomly generate either: 1. A 'definition' question asking what the metric is. 2. A 'calculation' scenario with numbers, asking the user to calculate the metric. For each of the 3 scenarios, provide the scenario/question and a detailed answer that explains the formula (if applicable) and shows the calculation. Return ONLY a valid JSON object like this: {"fastestFinger": [{"scenario": "...", "question": "...", "answer": "..."}, ...]}`;
+                    const roundData = allQuestions["Fastest Finger First"];
+                    const shuffled = [...roundData].sort(() => 0.5 - Math.random());
+                    const selected = shuffled.slice(0, 3);
+                    data = { fastestFinger: selected };
                 } else if (round === 3) {
-                    prompt = `You are an expert on the value proposition of Whatfix. Identify a key "Whatfix champion or sponsor role" within a potential enterprise client. A sponsor is a leader overlooking the project (e.g., CIO, VP of Sales, Digital transformation lead ,Training head), while a champion is a hands-on persona involved in implementation (e.g., Product Owner, Sales Operations Manager, training lead, change manager etc.). Randomly choose to profile either a sponsor or a champion. Provide the role title, a one-paragraph description of their challenges and goals relevant to whatfix, and a list of 6 potential KPIs Whatfix can improve for them. Return ONLY a valid JSON object like this: {"kpiIdentifier": {"role": "...", "description": "...", "kpis": ["...", "..."]}}`;
+                    const roundData = allQuestions["KPI Identifier"];
+                    const selected = roundData[Math.floor(Math.random() * roundData.length)];
+                    data = { kpiIdentifier: { role: selected.role, description: selected.description, kpis: selected.kpis } };
                 }
-
-                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                const payload = { contents: chatHistory, generationConfig: { responseMimeType: "application/json" } };
-                const apiKey = "AIzaSyABBoGL4O2Equv-1bhG-_9YArhhyv2cBA4"; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                
-                try {
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) {
-                        const errorBody = await response.text();
-                        console.error("API Error Response:", errorBody);
-                        throw new Error(`API request failed with status ${response.status}`);
-                    }
-                    const result = await response.json();
-
-                    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts || !result.candidates[0].content.parts[0]) {
-                        console.error("Invalid API response structure:", result);
-                        throw new Error("Received an invalid response from the AI service.");
-                    }
-
-                    const jsonText = result.candidates[0].content.parts[0].text;
-                    const parsedJson = JSON.parse(jsonText);
-                    console.log("Gemini API Response:", parsedJson);
-                    return parsedJson;
-                } catch (error) {
-                    console.error("AI content generation failed:", error);
-                    showMessage("Could not connect to AI. Please check the API key and network.", true);
-                    throw error; // Re-throw the error to be caught by the caller
-                }
+                return data;
             }
             
             // Initial setup
